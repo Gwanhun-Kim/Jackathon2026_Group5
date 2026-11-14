@@ -885,6 +885,52 @@ function applySnap(f, dt) {
 
 // ---------- IK: 발 고정, 주먹 보정 ----------
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+// ---------- 자연스러움 보정 (애니메이션 위에 덧씌움, 승패와 무관) ----------
+// 머리가 상대 머리를 계속 바라보게: 목 40%, 머리 60%로 나눠 돌리고 최대 35도까지만
+const LOOK_MAX = 0.6;
+const qIdentity = new THREE.Quaternion();
+const lookFwd = new THREE.Vector3();
+const lookDir = new THREE.Vector3();
+const lookQ = new THREE.Quaternion();
+const lookPart = new THREE.Quaternion();
+function applyLookAt(f, dt) {
+  const other = fighters[1 - f.index];
+  let target = 0;
+  if (!tapeMode && f.hp > 0) target = f.current ? 0.5 : 0.85;
+  f.lookW = f.lookW ?? 0;
+  f.lookW += (target - f.lookW) * (1 - Math.exp(-dt * 6));
+  if (f.lookW < 0.01) return;
+
+  f.model.updateMatrixWorld(true);
+  const headPos = localPos(f.head, f.model);
+  const targetPos = f.model.worldToLocal(worldPos(other.head));
+  lookDir.copy(targetPos).sub(headPos).normalize();
+  lookFwd.set(0, 0, 1).applyQuaternion(modelQuat(f.head, f.model)).normalize();
+  lookQ.setFromUnitVectors(lookFwd, lookDir);
+  const angle = 2 * Math.acos(Math.min(1, Math.abs(lookQ.w)));
+  if (angle > LOOK_MAX) lookQ.slerpQuaternions(qIdentity, lookQ.clone(), LOOK_MAX / angle);
+
+  lookPart.slerpQuaternions(qIdentity, lookQ, 0.4 * f.lookW);
+  rotateBoneModel(f.neck, lookPart, f.model);
+  lookPart.slerpQuaternions(qIdentity, lookQ, 0.6 * f.lookW);
+  rotateBoneModel(f.head, lookPart, f.model);
+}
+
+// 지친 자세: 체력이 60 아래로 떨어질수록 상체가 숙여지고 숨이 커지고 대기 동작이 느려진다
+// (상체를 앞으로 숙이는 방향은 피하기 연출과 같은 +X 회전)
+function applyFatigue(f) {
+  if (f.hp <= 0) return;
+  const fatigue = clamp((60 - f.hp) / 60, 0, 1);
+  f.base.idle.timeScale = 1 - 0.3 * fatigue;
+  const breath = Math.sin(gameTime * Math.PI * (1 + fatigue)) * 0.025 * (0.3 + fatigue);
+  const lean = (0.12 * fatigue + breath) * f.baseW;
+  tmpQ.setFromEuler(tmpE.set(lean, 0, 0));
+  f.spine.quaternion.multiply(tmpQ);
+  tmpQ.setFromEuler(tmpE.set(0.06 * fatigue * f.baseW, 0, 0));
+  f.head.quaternion.multiply(tmpQ);
+}
+
 const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 // 발 고정을 켜는 동작 (주먹·피격·막기). 스텝으로 걷는 중이거나 킥·KO 중에는 끈다
 const LEG_CLIPS = ['cross', 'hook', 'hit', 'jab', 'upper', 'body', 'bodyhit', 'bighit', 'block'];
@@ -1563,6 +1609,8 @@ function loop() {
       updateLoco(f, dt);
       f.mixer.update(dt);
       applyBody(f);
+      applyLookAt(f, dt);
+      applyFatigue(f);
       applySnap(f, dt);
       f.model.updateMatrixWorld(true);
     }
