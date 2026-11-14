@@ -1,14 +1,16 @@
-# 누가 이김? — 로컬 프론트엔드
+# 누가 이김?
 
-순수 HTML / CSS / JavaScript ES modules. 패키지 설치나 빌드가 필요 없습니다.
+🏆 **젝커톤 2026 우승 프로젝트**
 
-## 실행
+스포츠 선수들의 능력치를 바탕으로 대결을 즐기는 스포츠 서비스입니다.
 
-```sh
-python3 -m http.server 5173 --bind 127.0.0.1
-```
+순수 HTML / CSS / JavaScript ES modules 기반 프론트엔드입니다.
 
-http://127.0.0.1:5173 접속. 서버 터미널을 유지하세요. JSON을 fetch하므로 파일로 직접 열지 않습니다.
+## 실행 방법
+
+아래 링크에 접속하면 서비스를 이용할 수 있습니다.
+
+👉 [누가 이김? 서비스 바로가기](https://jackathon2026gwanhun.vercel.app/)
 
 ## 흐름과 파일
 
