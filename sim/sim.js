@@ -2,6 +2,7 @@
 // 입력: characters.json의 캐릭터 객체 (stats 1~10, specialAbility)
 // 출력: index.html 재생 코드가 읽는 형식 { winner, exchanges[] } + 추가 필드
 import { MOVES, MOVE_KEYS } from './moves.js';
+import { bodyOf, bodyDamageFactor, bodyHitBonus } from './body.js';
 
 /**
  * @typedef {import('./moves.js').Move} Move
@@ -94,6 +95,7 @@ function makeFighter(character) {
   return {
     c: character,
     s,
+    body: bodyOf(character.appearance),   // 키·몸무게·리치 (없으면 기본값)
     ability: character.specialAbility?.id ?? null,
     sig,
     weights,
@@ -178,6 +180,7 @@ export function simulate(a, b, seed = Math.floor(Math.random() * 2 ** 31)) {
       // 명중 / 가드 / 회피 확률
       let hit = T.hitBase + T.speedEdge * (n(att.s.attackSpeed) - n(def.s.moveSpeed));
       if (move === 'jab' || mv.kick) hit += 0.15 * (n(att.s.reach) - n(def.s.reach));
+      hit += bodyHitBonus(att.body, def.body);   // 실제 리치 차이
       if (att.ability === 'windup') hit -= 0.08;   // 준비 ×1.3 → 읽히기 쉬움
       if (boosted) hit += 0.15;                     // 준비 ×0.7
       if (att.pushed) hit -= 0.1;                   // 밀려난 상태
@@ -191,6 +194,7 @@ export function simulate(a, b, seed = Math.floor(Math.random() * 2 ** 31)) {
       // 피해
       let dmg = mv.dmg * (0.6 + 0.8 * n(att.s.power)) / (0.6 + 0.8 * n(def.s.toughness));
       dmg *= (0.85 + rng() * 0.3) * fatigue(att) * T.dmgScale;
+      dmg *= bodyDamageFactor(att.body, def.body);   // 체급 차이
       /** @type {string|undefined} */
       let ability;
       if (att.ability === 'windup') { dmg *= 1.35; ability = 'windup'; }
