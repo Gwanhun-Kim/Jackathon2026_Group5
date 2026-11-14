@@ -1,29 +1,65 @@
-# 누가 이김? — 로컬 프론트엔드 프로토타입
+# 누가 이김? — 로컬 프론트엔드
 
-순수 HTML / CSS / JavaScript ES modules. 별도 패키지 설치나 빌드 없이 실행합니다.
+순수 HTML / CSS / JavaScript ES modules. 패키지 설치나 빌드가 필요 없습니다.
+
+## 실행
 
 ```sh
 python3 -m http.server 5173 --bind 127.0.0.1
 ```
 
-브라우저에서 http://127.0.0.1:5173 접속. JSON을 fetch하므로 index.html을 파일로 직접 열지 마세요.
+http://127.0.0.1:5173 접속. 서버 터미널을 유지하세요. JSON을 fetch하므로 파일로 직접 열지 않습니다.
 
-- `src/data.js`: 서비스 제목 `SERVICE_TITLE`, 사용 방법, 선수 목록, ID별 이미지 경로 `CHARACTER_IMAGES`.
-- `characters.json`: 기존 스탯과 특수 효과의 단일 원본. 값은 변경하지 않았습니다. 읽기 실패 시 ‘데이터 준비 중’ 표시.
-- `src/app.js`: 시작 / 사용 방법 / 선택 화면과 상태. `state.browsing`은 탐색 위치, `state.selected`는 최종 선택 캐릭터 객체. 새로고침 시 초기화됩니다.
-- `src/styles.css`: 반응형 레이아웃, 전시실 애니메이션, 모션 감소 설정.
+## 흐름과 파일
+
+시작 → 사용 방법 → 내 선수 선택 → 상대 선수 선택 → 전송 결과.
+동일 선수끼리 선택할 수 있습니다. 뒤로 이동해도 각 선택 화면의 탐색 위치와 선택 ID를 유지하며, 새로고침하면 초기화됩니다.
+
+- `src/app.js`: 화면, 독립된 player/opponent 탐색 위치, 선택 ID, 전송 상태.
+- `src/data.js`: 제목 `SERVICE_TITLE`, 안내 문구, 선수별 이미지 경로 `CHARACTER_IMAGES`.
+- `characters.json`: 스탯·특수 효과 원본. 기존 수치를 변경하지 않았습니다.
+- `src/styles.css`: 상단 CSS 색상 변수 및 상대 선택 화면의 붉은 조명 변수. 내 선수는 흰색 조명.
+- `src/config.js`: API 모드, 기본 URL, 경로, 제한 시간, mock 옵션.
+- `src/api.js`: ID 검증, 요청 본문 구성, 중복 요청 방지, 서버·네트워크·응답 오류 처리.
+
+## 백엔드 연결
+
+현재 백엔드 코드가 없으므로 기본값은 **명시적 mock 모드**입니다. 모든 화면에 ‘테스트 모드’를 표시하며, 결과의 `mock-…` ID는 브라우저에서 생성합니다. 실제 서버 호출이나 서버 저장은 하지 않습니다. 실제 요청 실패를 mock으로 대체하지 않습니다.
+
+`src/config.js`를 수정하고 새로고침하세요.
+
+```js
+mode: 'live',
+baseUrl: 'http://localhost:8000', // ''이면 프론트엔드와 같은 호스트
+matchesPath: '/api/matches',
+```
+
+다른 호스트는 백엔드에서 프론트엔드 origin에 대해 CORS 및 JSON POST/OPTIONS를 허용해야 합니다. 기본 Python 정적 서버에는 API가 없으므로 같은 호스트 live 요청은 오류가 납니다.
+
+요청: `POST /api/matches`, `Content-Type: application/json`
+
+```json
+{"playerCharacterId":"ohtani","opponentCharacterId":"ngannou"}
+```
+
+성공 응답: 2xx와 아래 JSON. `matchId`는 비어 있지 않은 문자열입니다.
+
+```json
+{"matchId":"서버가 생성한 대결 ID"}
+```
+
+서버는 ID를 검증하고 자체 데이터에서 스탯을 조회해야 합니다. 클라이언트는 스탯을 보내지 않습니다. 전송 중 UI와 요청 계층 양쪽에서 중복 요청을 차단합니다. 실패하면 선택을 유지하고 ‘다시 전송’을 제공합니다. 서버가 요청을 처리한 뒤 응답만 유실된 경우의 재시도 중복 생성 방지는 향후 서버의 멱등성 계약이 필요합니다.
 
 ## 이미지 교체
 
-완성된 맨손 선수 이미지를 `assets/characters/` 등에 넣고 `src/data.js`의 경로를 변경합니다.
+맨손 전신 이미지를 `assets/characters/` 등에 넣고 `src/data.js`의 `CHARACTER_IMAGES`에서 ID별 경로를 설정하세요. 예: `ohtani: './assets/characters/ohtani.png'`. null 또는 이미지 로딩 실패 시 이름이 붙은 실루엣을 표시합니다. 기존 부품 이미지는 보존했습니다. 직접 생성 메뉴는 안내 모달만 제공합니다.
 
-```js
-export const CHARACTER_IMAGES = {
-  ohtani: './assets/characters/ohtani.png',
-  ngannou: null, son: null, kim: null, ha: null, park: null
-};
+## 검증
+
+```sh
+node tests/api.test.mjs
 ```
 
-투명 배경 전신 PNG/WebP를 권장합니다. null 또는 로딩 실패 시 이름이 표시된 실루엣을 사용합니다. 기존 `assets/sports-parts-v1/`은 신체 부품 자산이므로 보존했으며 완성된 선수 이미지로 재사용하지 않습니다.
+정확한 두 ID 본문, 동일 선수, 선택 검증, 중복 방지, live 요청 계약, 서버 실패/재시도, 네트워크 오류, 잘못된 응답, 시간 초과, mock 오류/재시도를 독립된 fetch 대역으로 검증합니다. 실제 운영 백엔드와의 통합 테스트는 아닙니다.
 
-선택 완료까지의 프로토타입입니다. 직접 생성 버튼은 안내 모달만 엽니다. 이미지 생성 API, 대결, 서버 저장은 연결하지 않았습니다.
+브라우저에서 오류 UI를 재현하려면 mock 모드에서 `mockFailFirst: true`로 설정하세요. 첫 요청만 실패하고 재시도는 성공합니다. 기본값은 false입니다.
