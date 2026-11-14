@@ -56,6 +56,8 @@
   <div id="flash"></div>
   <div id="tape" hidden></div>
   <button class="btn" id="startBtn" hidden>경기 시작</button>
+  <button class="btn" id="resultBtn" hidden style="bottom:84px">결과 보기</button>
+  <button id="skipBtn" hidden style="position:absolute;top:74px;right:12px;z-index:5;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">건너뛰기 ›</button>
   <div id="loading">파이터 불러오는 중...</div>
 </div>
 
@@ -1467,6 +1469,10 @@ async function runFight() {
   for (let tries = 0; TARGET_WINNER !== null && result.winner !== TARGET_WINNER && tries < 200; tries++) {
     result = simulateFight(PLAYERS[0], PLAYERS[1]);
   }
+  // 결과 페이지(../result.html)가 읽는다. 건너뛰기를 눌러도 같은 결과가 나온다
+  try { localStorage.setItem('fightResult', JSON.stringify({ winner: result.winner, exchanges: result.exchanges, at: Date.now() })); } catch (e) { console.warn('fightResult 저장 실패', e); }
+  $('resultBtn').hidden = true;
+  $('skipBtn').hidden = false;
 
   // 경기 전 비교 화면 (두 선수 나란히 + 스탯 표)
   ring.d = ring.dTarget = 2.2;
@@ -1540,10 +1546,15 @@ async function runFight() {
   caption('');
   $('startBtn').textContent = '다시 보기';
   $('startBtn').hidden = false;
+  $('skipBtn').hidden = true;
+  $('resultBtn').hidden = false;
   running = false;
 }
 
 $('startBtn').addEventListener('click', () => { if (!running) runFight(); });
+const goResult = () => { location.href = '../result.html'; };
+$('skipBtn').addEventListener('click', goResult);
+$('resultBtn').addEventListener('click', goResult);
 
 // ---------- 시작 ----------
 const hitPeaks = {};

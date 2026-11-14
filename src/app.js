@@ -2,6 +2,7 @@ import { createEditor } from './creator.js';
 import { API_CONFIG } from './config.js';
 import { createMatch } from './api.js';
 import { SERVICE_TITLE, STAT_LABELS, INSTRUCTIONS, loadCharacters } from './data.js';
+import { startFight, deleteCustomCharacter } from './fight-link.js';
 const app = document.querySelector('#app');
 const characters = await loadCharacters();
 const state = { screen:'start', browsing:{player:0, opponent:0}, playerCharacterId:null, opponentCharacterId:null, sending:false, error:'', result:null };
@@ -57,7 +58,17 @@ function updateSelection() {
   app.querySelector('#request-feedback').innerHTML=state.error?`<p class="request-error" role="alert">${escape(state.error)}</p><button class="retry">다시 전송</button>`:state.sending?'<p class="request-progress" role="status">선택 정보를 전송하고 있어요.</p>':'';
   const retry=app.querySelector('.retry'); if(retry)retry.onclick=submitMatch;
   app.querySelector('#selection-status').textContent=state.playerCharacterId?`내 선수 · ${nameFor(state.playerCharacterId)}`:'내 팀의 첫 번째 선택';
-  app.querySelector('#details').innerHTML=custom?`<p class="eyebrow">CREATE YOUR OWN</p><h2>나만의 선수</h2><p class="custom-description">상상한 선수를 직접 만들어보세요.</p><div class="custom-line">새로운 가능성을 더할 자리<span>+</span></div>`:`<div class="detail-heading"><div><p class="eyebrow">${escape(c.sport)} · 맨손</p><h2>${escape(c.name)}</h2></div></div><div class="stats-heading"><h3>기본 능력치</h3><span>1–10</span></div><div class="stats">${STAT_LABELS.map(([key,label,hint])=>{ const value=c.stats?.[key]; const valid=Number.isFinite(value)&&value>=1&&value<=10; return `<div class="stat"><div class="stat-label">${label}${hint?`<small>${hint}</small>`:''}</div>${valid?`<meter min="0" max="10" value="${value}" aria-label="${label} ${value}/10" style="--value:${value*10}%">${value}/10</meter><strong>${value}</strong>`:'<span class="pending">데이터 준비 중</span>'}</div>`;}).join('')}</div><section class="ability"><p class="eyebrow">특수 효과</p><h3>${escape(c.specialAbility?.name??'데이터 준비 중')}</h3><p>${escape(c.specialAbility?.description??'데이터 준비 중')}</p></section>`;
+  app.querySelector('#details').innerHTML=custom?`<p class="eyebrow">CREATE YOUR OWN</p><h2>나만의 선수</h2><p class="custom-description">상상한 선수를 직접 만들어보세요.</p><div class="custom-line">새로운 가능성을 더할 자리<span>+</span></div>`:`<div class="detail-heading"><div><p class="eyebrow">${escape(c.sport)} · 맨손</p><h2>${escape(c.name)}</h2></div></div><div class="stats-heading"><h3>기본 능력치</h3><span>1–10</span></div><div class="stats">${STAT_LABELS.map(([key,label,hint])=>{ const value=c.stats?.[key]; const valid=Number.isFinite(value)&&value>=1&&value<=10; return `<div class="stat"><div class="stat-label">${label}${hint?`<small>${hint}</small>`:''}</div>${valid?`<meter min="0" max="10" value="${value}" aria-label="${label} ${value}/10" style="--value:${value*10}%">${value}/10</meter><strong>${value}</strong>`:'<span class="pending">데이터 준비 중</span>'}</div>`;}).join('')}</div><section class="ability"><p class="eyebrow">특수 효과</p><h3>${escape(c.specialAbility?.name??'데이터 준비 중')}</h3><p>${escape(c.specialAbility?.description??'데이터 준비 중')}</p></section>${c.sport==='직접 생성'?'<button class="retry delete-character" style="margin-top:20px">이 선수 삭제</button>':''}`;
+  const del=app.querySelector('.delete-character');
+  if(del)del.onclick=()=>{
+    if(!confirm(`'${c.name}' 선수를 삭제할까요? 이 브라우저에서 지워지며 되돌릴 수 없습니다.`))return;
+    deleteCustomCharacter(c.id);
+    characters.splice(currentIndex(),1);
+    for(const key of ['playerCharacterId','opponentCharacterId'])if(state[key]===c.id)state[key]=null;
+    for(const r of ['player','opponent'])state.browsing[r]=Math.min(state.browsing[r],characters.length-1);
+    if(role()==='opponent'&&!state.playerCharacterId)state.screen='player';
+    render();
+  };
 }
 function setupSelection() {
   app.querySelectorAll('[data-index]').forEach(button=>button.onclick=()=>browse(Number(button.dataset.index)));
@@ -68,7 +79,11 @@ function setupSelection() {
     const c=characters[currentIndex()];
     if(c.id==='custom'){const context=role();state.screen='creator';editor.open(context);return;}
     if(role()==='player'){state.playerCharacterId=c.id;state.screen='opponent';state.error='';state.result=null;render();window.scrollTo(0,0);}
-    else {state.opponentCharacterId=c.id;await submitMatch();}
+    else {
+      state.opponentCharacterId=c.id;
+      const player=characters.find(x=>x.id===state.playerCharacterId);
+      try{startFight(player,c);}catch(error){state.error=error.message;updateSelection();}
+    }
   };
 
   let start=null; const carousel=app.querySelector('.carousel');
