@@ -19,12 +19,12 @@
   .hp.right .bar { transform: scaleX(-1); }
   #round { position: absolute; top: 52px; left: 0; right: 0; text-align: center; font-size: 11px; color: #bbb; letter-spacing: 2px; pointer-events: none; }
   #caption { position: absolute; left: 16px; right: 16px; bottom: 90px; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.35; text-shadow: 0 2px 8px #000, 0 0 2px #000; pointer-events: none; transition: opacity 0.3s; }
-  #ability { position: absolute; left: 0; right: 0; top: 96px; text-align: center; font-weight: 900; font-style: italic; font-size: 22px; text-shadow: 0 0 12px rgba(0,0,0,0.9), 0 2px 6px #000; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+  #ability { position: absolute; left: 0; right: 0; top: 96px; text-align: center; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-shadow: 0 2px 6px #000; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
   #tag { position: absolute; top: 74px; left: 14px; font-size: 12px; font-weight: 900; color: #000; background: var(--neon); padding: 2px 8px; letter-spacing: 1px; }
   #banner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-  #banner .big { font-size: 64px; font-weight: 900; font-style: italic; color: var(--neon); text-shadow: 0 0 24px var(--neon); animation: pop 0.35s ease-out; }
-  #banner .small { font-size: 20px; font-weight: 800; margin-top: 4px; text-shadow: 0 2px 8px #000; }
-  @keyframes pop { from { transform: scale(1.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #banner .big { font-size: 52px; font-weight: 800; letter-spacing: 8px; color: #f4f4f4; text-shadow: 0 2px 18px rgba(0,0,0,0.85); animation: pop 0.5s ease-out; }
+  #banner .small { font-size: 16px; font-weight: 700; letter-spacing: 2px; margin-top: 8px; color: #cfcfcf; text-shadow: 0 2px 8px #000; }
+  @keyframes pop { from { transform: scale(1.08); opacity: 0; letter-spacing: 14px; } to { transform: scale(1); opacity: 1; } }
   .btn { position: absolute; left: 16px; right: 16px; bottom: 20px; background: var(--neon); color: #000; border: 0; padding: 14px; font-size: 18px; font-weight: 900; cursor: pointer; }
   #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--neon); }
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
@@ -73,6 +73,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const FILES = {
   idle: 'mixamo/idle.fbx',
@@ -228,6 +229,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(W, H);
 renderer.shadowMap.enabled = true;
+// 영화 같은 색 보정 (밝은 곳은 부드럽게 눌러주고 어두운 곳은 깊게)
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
 stage.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -236,8 +240,10 @@ scene.fog = new THREE.Fog(0x000000, 14, 45);
 
 const camera = new THREE.PerspectiveCamera(28, W / H, 0.1, 200);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x101010, 0.9));
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+// 조명: 주변광은 어둡게, 위에서 내리꽂는 주광 + 뒤에서 윤곽을 따는 테두리 조명 두 개
+// 바닥 쪽 주변광은 주황 그리드 빛이 몸 아래에 비치는 느낌
+scene.add(new THREE.HemisphereLight(0x9aa4b4, 0x3a1206, 0.45));
+const keyLight = new THREE.DirectionalLight(0xfff4e8, 2.4);
 keyLight.position.set(3, 10, 5);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(1024, 1024);
@@ -246,25 +252,52 @@ keyLight.shadow.camera.right = 6;
 keyLight.shadow.camera.top = 6;
 keyLight.shadow.camera.bottom = -6;
 scene.add(keyLight);
-const rim = new THREE.DirectionalLight(0xff5a1f, 1.2);
+const rim = new THREE.DirectionalLight(0xff5a1f, 2.6);
 rim.position.set(-4, 3, -6);
 scene.add(rim);
+const rimCool = new THREE.DirectionalLight(0xc8d4ff, 1.4);
+rimCool.position.set(5, 4, -5);
+scene.add(rimCool);
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x060606, roughness: 0.85 }));
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x070707, roughness: 0.75, metalness: 0.05 }));
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 const grid = new THREE.GridHelper(80, 60, 0xff5a1f, 0xff5a1f);
 grid.material.transparent = true;
-grid.material.opacity = 0.6;
+grid.material.opacity = 0.42;
 grid.position.y = 0.01;
 scene.add(grid);
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.4, 0.55);
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.28, 0.4, 0.6);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+
+// 마지막 화면 처리: 가장자리를 어둡게(비네팅) + 아주 약한 필름 입자
+const filmPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float time;
+    varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 p = (vUv - 0.5) * vec2(1.0, 0.85);
+      float vignette = smoothstep(0.78, 0.22, length(p));
+      c.rgb *= mix(0.62, 1.0, vignette);
+      float n = fract(sin(dot(vUv * 731.7 + time, vec2(12.9898, 78.233))) * 43758.5453);
+      c.rgb += (n - 0.5) * 0.03;
+      gl_FragColor = c;
+    }
+  `,
+});
+composer.addPass(filmPass);
 
 // ---------- 게임 시간 (히트스톱·슬로모션이 모든 것에 적용되도록) ----------
 let gameTime = 0;
@@ -400,7 +433,10 @@ function makeFighter(base, index) {
     const list = Array.isArray(obj.material) ? obj.material : [obj.material];
     const cloned = list.map((m) => {
       const c = m.clone();
-      if (c.color) c.color.set(c.name.toLowerCase().includes('joint') ? 0x2a2a2a : 0x9a9a9a);
+      // 영상 속 마네킹처럼 짙은 회색 + 약한 광택
+      if (c.color) c.color.set(c.name.toLowerCase().includes('joint') ? 0x1c1c1c : 0x5e5e5e);
+      if (c.shininess !== undefined) c.shininess = 40;
+      if (c.specular) c.specular.set(0x3a3a3a);
       mats.push(c);
       return c;
     });
@@ -415,9 +451,9 @@ function makeFighter(base, index) {
   const mirror = p.stance === 'southpaw' ? -1 : 1;
   model.scale.set(scale * p.width * mirror, scale, scale * p.width);
 
-  const gearMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.45, emissive: p.color, emissiveIntensity: 0.15 });
+  const gearMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.4, emissive: p.color, emissiveIntensity: 0.04 });
   // 트렁크: 허리 띠 + 허벅지 두 개. 허벅지 뼈에 붙여서 다리와 같이 움직인다
-  const shortsMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.5, emissive: p.color, emissiveIntensity: 0.15, side: THREE.DoubleSide });
+  const shortsMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.55, emissive: p.color, emissiveIntensity: 0.04, side: THREE.DoubleSide });
   const hips = findBone(model, 'Hips');
   const band = new THREE.Mesh(new THREE.CylinderGeometry(rawHeight * 0.088, rawHeight * 0.092, rawHeight * 0.075, 20, 1, true), shortsMat);
   band.position.y = -rawHeight * 0.005;
@@ -770,6 +806,32 @@ function bone(f, name) {
   return f.B[name];
 }
 
+// 몸통이 서로 파고들지 않게: 두 선수 엉덩이 사이가 너무 가까우면 양쪽으로 살짝 떼어 놓는다
+// (발 고정 IK보다 먼저 해서, 발은 그 자리에 두고 몸만 물러나게 보인다)
+const hipsA = new THREE.Vector3();
+const hipsB = new THREE.Vector3();
+function separateBodies() {
+  const [a, b] = fighters;
+  bone(a, 'Hips').getWorldPosition(hipsA);
+  bone(b, 'Hips').getWorldPosition(hipsB);
+  const dx = hipsB.x - hipsA.x;
+  const dz = hipsB.z - hipsA.z;
+  const dist = Math.hypot(dx, dz);
+  const sizeA = (a.p.height / 175) * a.p.width;
+  const sizeB = (b.p.height / 175) * b.p.width;
+  const minGap = 0.4 * (sizeA + sizeB);
+  if (dist >= minGap || dist < 1e-4) return;
+  const push = (minGap - dist) / 2;
+  const nx = dx / dist;
+  const nz = dz / dist;
+  a.model.position.x -= nx * push;
+  a.model.position.z -= nz * push;
+  b.model.position.x += nx * push;
+  b.model.position.z += nz * push;
+  a.model.updateMatrixWorld(true);
+  b.model.updateMatrixWorld(true);
+}
+
 // 타격 순간 앞뒤로 손을 상대 머리에 끌어당긴다
 function applyPunchAssist(f) {
   const a = f.assist;
@@ -842,7 +904,9 @@ function applyFeet(f, dt) {
 }
 
 // ---------- 카메라 ----------
-const cam = { shot: 'side', side: 1, locked: false, nextCut: 0, pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 28, shake: 0, focus: 0 };
+// busy: 공방 중에는 컷을 바꾸지 않는다 (중계처럼 한 앵글로 끝까지 보여줌)
+// push: 큰 타격 때 잠깐 줌인하는 양 (컷을 튀게 바꾸는 대신)
+const cam = { shot: 'side', side: 1, locked: false, busy: false, push: 0, nextCut: 0, pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 28, shake: 0, focus: 0 };
 
 function headPos(f) {
   const v = new THREE.Vector3();
@@ -903,13 +967,14 @@ function cut(shot, side) {
   cam.pos.copy(t.pos);
   cam.look.copy(t.look);
   cam.fov = t.fov;
-  cam.nextCut = performance.now() / 1000 + rand(1.8, 3.2);
+  cam.nextCut = performance.now() / 1000 + rand(3.5, 6);
 }
 
+// 탐색 중에만 가끔 앵글을 바꾼다. 낮은 앵글은 KO 같은 큰 장면에만 남겨둔다
 function autoCut() {
-  if (cam.locked) return;
+  if (cam.locked || cam.busy) return;
   if (performance.now() / 1000 < cam.nextCut) return;
-  const options = ['side', 'side', 'low', 'ots0', 'ots1', 'wide'].filter((s) => s !== cam.shot);
+  const options = ['side', 'side', 'wide', 'ots0', 'ots1'].filter((s) => s !== cam.shot);
   cut(pick(options));
 }
 
@@ -924,7 +989,9 @@ function updateCamera(realDt) {
   cam.shake = Math.max(0, cam.shake - realDt * 2.5);
   const sh = cam.shake * cam.shake;
   camera.position.copy(cam.pos).add(hand).add(new THREE.Vector3((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh));
-  camera.fov = cam.fov;
+  cam.push = Math.max(0, cam.push - realDt * 5);
+  camera.fov = cam.fov - cam.push;
+  filmPass.uniforms.time.value = now % 100;
   camera.updateProjectionMatrix();
   camera.lookAt(cam.look);
 }
@@ -1078,7 +1145,7 @@ function abilityCaption(f, id) {
   if (abilityShownAt[key] && gameTime - abilityShownAt[key] < 4) return;
   abilityShownAt[key] = gameTime;
   const el = $('ability');
-  el.textContent = `${f.p.name} · ${f.p.ability.name}!`;
+  el.textContent = `${f.p.name} · ${f.p.ability.name}`;
   el.style.color = f.p.color;
   el.style.opacity = 1;
   clearTimeout(el._t);
@@ -1133,7 +1200,8 @@ async function impact(att, def, s, replay) {
     def.hp -= s.dmg;
     updateHud();
   }
-  if (big && !cam.locked && Math.random() < 0.6) cut('close' + def.index);
+  // 큰 타격은 컷을 바꾸지 않고 살짝 줌인만
+  if (big) cam.push = Math.max(cam.push, s.ko ? 5 : 3);
 }
 
 // 막기: 공격이 닿기 직전에 가드를 올리는 동작
@@ -1162,6 +1230,9 @@ async function playExchange(ex, replay = false) {
   // 공방 중에는 링을 도는 움직임을 거의 멈춘다 (치면서 미끄러지지 않게)
   const omegaBefore = ring.omega;
   ring.omega *= 0.15;
+  // 공방은 읽기 쉬운 앵글로 시작해서 끝날 때까지 컷을 바꾸지 않는다
+  if (!cam.locked && !['side', 'wide', 'ots0', 'ots1'].includes(cam.shot)) cut('side');
+  cam.busy = true;
 
   for (let i = 0; i < ex.strikes.length; i++) {
     const s = ex.strikes[i];
@@ -1216,16 +1287,18 @@ async function playExchange(ex, replay = false) {
         def.leanVel -= 5;
         ring.dTarget = ring.d + 0.5;
       }
-      if (!replay && !s.ko) caption(s.special ? `주특기 ${mv.label}! ${att.p.name} 제대로 꽂아 넣습니다!` : line('hit', att.p.name, def.p.name, mv.label));
+      if (!replay && !s.ko) caption(line('hit', att.p.name, def.p.name, mv.label));
     }
     if (s.ko) {
       ring.anchor = null;
+      cam.busy = false;
       return true;
     }
     await sleep(i < ex.strikes.length - 1 ? 0.12 : 0.35);
   }
   ring.anchor = null;
   ring.omega = omegaBefore;
+  cam.busy = false;
   toIdle(att, 0.3);
   return false;
 }
@@ -1363,7 +1436,7 @@ async function runFight() {
   const loser = fighters[1 - result.winner];
   await knockout(loser, winner, false);
   const finish = last.ex.strikes[last.ex.strikes.length - 1];
-  banner('K.O.', finish.specialKO ? `필살 ${MOVES[finish.move].label}!` : '');
+  banner('KO', '');
   await realSleep(1300);
   banner('');
 
@@ -1458,6 +1531,7 @@ function loop() {
       applySnap(f, dt);
       f.model.updateMatrixWorld(true);
     }
+    if (!tapeMode) separateBodies();
     for (const f of fighters) applyPunchAssist(f);
     for (const f of fighters) applyFeet(f, dt);
     autoCut();
