@@ -58,24 +58,26 @@
     });
   }
 
-  // 얼굴 위주로 자르는 기본값: 세로 사진(증명사진·셀카)은 가운데 위쪽 얼굴, 그 외는 위쪽 가운데
-  function defaultCrop(img) {
-    const w = img.naturalWidth, h = img.naturalHeight;
-    return h > w * 1.1 ? { zoom: 1.6, y: 0.38 } : { zoom: 1.3, y: 0.42 };
+  // 얼굴 인식 + 자르기 (face-crop.js). 모듈을 못 불러오면 위쪽 가운데로 자른다
+  let faceTools = null;
+  async function getFaceTools() {
+    if (!faceTools) {
+      try { faceTools = await import("./face-crop.js"); }
+      catch (e) { faceTools = null; }
+    }
+    return faceTools;
   }
-
-  // zoom: 짧은 변 대비 확대 배율, y: 얼굴 중심의 세로 위치(0~1) -> 정사각형 256px JPEG
-  function cropFace(img, crop) {
+  function fallbackRender(img, adjust) {
     const w = img.naturalWidth, h = img.naturalHeight;
-    const side = Math.min(w, h) / crop.zoom;
-    const sx = Math.min(w - side, Math.max(0, w / 2 - side / 2));
-    const sy = Math.min(h - side, Math.max(0, crop.y * h - side / 2));
+    const side = Math.min(w, h) * 0.64 / (adjust.zoom || 1);
+    const cy = h * (h > w * 1.1 ? 0.36 : 0.42) + (adjust.shiftY || 0) * side;
     const cv = document.createElement("canvas");
     cv.width = cv.height = 256;
-    const g = cv.getContext("2d");
-    g.imageSmoothingQuality = "high";
-    g.drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
+    cv.getContext("2d").drawImage(img, w / 2 - side / 2, cy - side / 2, side, side, 0, 0, 256, 256);
     return cv.toDataURL("image/jpeg", 0.9);
+  }
+  function cropFace(img, crop) {
+    return faceTools && crop.box ? faceTools.renderFace(img, crop.box, crop) : fallbackRender(img, crop);
   }
   let faceImg = null;
   let faceCrop = null;
@@ -210,8 +212,9 @@
       if (c.specialAbility) o.specialAbility = c.specialAbility;
       if (c.appearance) o.appearance = Object.assign({}, c.appearance);
       if (!c.custom && FACES[c.id]) {
-        o.look.face = `images/faces/${c.id}.jpg`;
-        o.appearance = Object.assign({}, o.appearance, { face: `../character/images/faces/${c.id}.jpg` });
+        const file = (window.FACE_FILES || {})[c.id] || `${c.id}.png`;
+        o.look.face = `images/faces/${file}`;
+        o.appearance = Object.assign({}, o.appearance, { face: `../character/images/faces/${file}` });
       }
       if (c.custom) o.custom = true;
       return o;
@@ -260,13 +263,16 @@
       if (!file) return;
       try {
         faceImg = await loadImage(file);
-        faceCrop = defaultCrop(faceImg);
+        toast("얼굴을 찾는 중...");
+        const tools = await getFaceTools();
+        const box = tools ? await tools.detectFace(faceImg) : null;
+        faceCrop = { box, zoom: 1, shiftY: 0 };
         draft.look.face = cropFace(faceImg, faceCrop);
         syncControls();
-        toast("얼굴 사진을 넣었어요. 아래 슬라이더로 얼굴 위치를 맞춰보세요");
+        toast(box && box.found ? "얼굴을 찾아서 맞춰 넣었어요" : "얼굴을 못 찾아서 위쪽 가운데로 잘랐어요. 슬라이더로 맞춰주세요");
       } catch (err) { toast(err.message); }
     });
-    for (const [id, key] of [["faceZoom", "zoom"], ["faceY", "y"]]) {
+    for (const [id, key] of [["faceZoom", "zoom"], ["faceY", "shiftY"]]) {
       $(id).addEventListener("input", (e) => {
         if (!faceImg) return;
         faceCrop[key] = +e.target.value;
@@ -365,7 +371,7 @@
     if (draft.look.face) $("faceThumb").src = draft.look.face;
     $("faceClear").hidden = !draft.look.face;
     $("faceAdjust").hidden = !(draft.look.face && faceImg);
-    if (faceImg && faceCrop) { $("faceZoom").value = faceCrop.zoom; $("faceY").value = faceCrop.y; }
+    if (faceImg && faceCrop) { $("faceZoom").value = faceCrop.zoom; $("faceY").value = faceCrop.shiftY; }
     $("faceLabel").textContent = draft.look.face ? "다른 사진으로 바꾸기" : "사진 올리기";
     if (document.activeElement !== $("name")) $("name").value = draft.name;
 
@@ -413,7 +419,8 @@
   }
 
   // ---------- 얼굴 사진 출처 (CC 라이선스 표기)
-  const credits = Object.entries(CREDITS);
+  const credits = Object.entries(CREDITS).filter(([, c]) => c && c.source);
+  if (!credits.length && window.FACE_NOTE) $("credits").textContent = window.FACE_NOTE;
   if (credits.length) {
     $("credits").innerHTML = "선수 얼굴 사진 출처 (Wikimedia Commons): " + credits.map(([id, c]) => {
       const who = (base.find((b) => b.id === id) || {}).name || id;

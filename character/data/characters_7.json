@@ -52,11 +52,11 @@
         "color": "#1d4ed8",
         "accent": "#ef4444",
         "hair": "cap",
-        "face": "images/faces/ohtani.jpg"
+        "face": "images/faces/ohtani.png"
       },
       "image": "images/ohtani.png",
       "appearance": {
-        "face": "../character/images/faces/ohtani.jpg"
+        "face": "../character/images/faces/ohtani.png"
       }
     },
     {
@@ -92,11 +92,11 @@
         "color": "#1f2937",
         "accent": "#f59e0b",
         "hair": "bald",
-        "face": "images/faces/ngannou.jpg"
+        "face": "images/faces/ngannou.png"
       },
       "image": "images/ngannou.png",
       "appearance": {
-        "face": "../character/images/faces/ngannou.jpg"
+        "face": "../character/images/faces/ngannou.png"
       }
     },
     {
@@ -135,11 +135,11 @@
         "color": "#f8fafc",
         "accent": "#1e3a8a",
         "hair": "short",
-        "face": "images/faces/son.jpg"
+        "face": "images/faces/son.png"
       },
       "image": "images/son.png",
       "appearance": {
-        "face": "../character/images/faces/son.jpg"
+        "face": "../character/images/faces/son.png"
       }
     },
     {
@@ -177,11 +177,11 @@
         "color": "#dc2626",
         "accent": "#facc15",
         "hair": "ponytail",
-        "face": "images/faces/kim.jpg"
+        "face": "images/faces/kim.png"
       },
       "image": "images/kim.png",
       "appearance": {
-        "face": "../character/images/faces/kim.jpg"
+        "face": "../character/images/faces/kim.png"
       }
     },
     {
@@ -217,11 +217,11 @@
         "color": "#7c3aed",
         "accent": "#f97316",
         "hair": "short",
-        "face": "images/faces/ha.jpg"
+        "face": "images/faces/ha.png"
       },
       "image": "images/ha.png",
       "appearance": {
-        "face": "../character/images/faces/ha.jpg"
+        "face": "../character/images/faces/ha.png"
       }
     },
     {
@@ -260,11 +260,11 @@
         "color": "#0284c7",
         "accent": "#facc15",
         "hair": "swimcap",
-        "face": "images/faces/park.jpg"
+        "face": "images/faces/park.png"
       },
       "image": "images/park.png",
       "appearance": {
-        "face": "../character/images/faces/park.jpg"
+        "face": "../character/images/faces/park.png"
       }
     },
     {
