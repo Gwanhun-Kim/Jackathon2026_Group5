@@ -74,6 +74,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { bodyOf, bodyDamageFactor, bodyHitBonus } from '../sim/body.js';
 
 const FILES = {
   idle: 'mixamo/idle.fbx',
@@ -1048,8 +1049,14 @@ function specialKoChance(att, def, defHp) {
   return Math.min(0.9, base * (1 + 3 * (1 - defHp / 100)));
 }
 
+// 선수 체격 (키·몸무게·리치). 계산은 sim/body.js 공식을 같이 쓴다
+function playerBody(p) {
+  return bodyOf({ heightCm: p.height, weightKg: p.weight, reachCm: p.reachCm });
+}
+
 function simulateFight(A, B) {
   const P = [A, B];
+  const bodies = [playerBody(A), playerBody(B)];
   const hp = [100, 100];
   const exchanges = [];
   let forced = null;
@@ -1078,6 +1085,8 @@ function simulateFight(A, B) {
       // 후반에는 체력(stamina)이 낮은 쪽이 덜 맞힌다
       const tired = Math.max(0, n - 5) * 0.02 * (1.35 - att.stamina);
       let hitChance = 0.5 + (att.speed - def.speed) * 0.4 - tired;
+      // 리치가 길면 조금 더 잘 맞힌다
+      hitChance += bodyHitBonus(bodies[atk], bodies[1 - atk]);
       if (counter && abl === 'block_counter') hitChance += 0.2;
       if (abl === 'pace_control' && hp[atk] <= 30) hitChance += 0.1;
       const blockChance = 0.3 + (def.defense - 1) * 0.3;
@@ -1087,7 +1096,8 @@ function simulateFight(A, B) {
       else if (r < hitChance + blockChance) result = 'block';
       let dmg = 0;
       let ability = null;
-      if (result === 'hit') dmg = Math.round(MOVES[move].dmg * att.power / def.chin * rand(0.8, 1.25) * 1.15);
+      // 몸무게가 무거울수록 세게 때리고 덜 아프다
+      if (result === 'hit') dmg = Math.round(MOVES[move].dmg * att.power / def.chin * bodyDamageFactor(bodies[atk], bodies[1 - atk]) * rand(0.8, 1.25) * 1.15);
       if (result === 'block') dmg = 1;
       // 특수능력 효과 (비슷하게만 흉내)
       if (abl === 'windup' && result === 'hit') {
