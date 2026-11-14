@@ -345,17 +345,163 @@ function probeHitPeak(base, clip) {
   return best.t;
 }
 
-// 얼굴 위치 (키 대비 비율)
+// 얼굴 위치 (키 대비 비율) - 머리 크기를 잴 수 없을 때만 쓰는 예비값
 const FACE = { r: 0.064, y: 0.047, z: 0.04, wide: Math.PI * 0.75, tall: Math.PI * 0.7 };
 window.FACE = FACE;
 
-// 얼굴 이미지가 없으면 임시 얼굴을 그린다
-function makeFaceTexture(p) {
-  if (p.face) {
-    const tex = new THREE.TextureLoader().load(p.face);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+// 마네킹 머리(Head 뼈에 붙은 꼭짓점)의 중심과 반지름을 Head 뼈 기준 좌표로 잰다
+let headShapeCache = null;
+function measureHead(model) {
+  if (headShapeCache) return headShapeCache;
+  const v = new THREE.Vector3();
+  const m = new THREE.Matrix4();
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  let count = 0;
+  const verts = [];
+  model.traverse((obj) => {
+    if (!obj.isSkinnedMesh) return;
+    const bones = obj.skeleton.bones;
+    const hi = bones.findIndex((b) => /Head$/.test(b.name));
+    if (hi < 0) return;
+    m.multiplyMatrices(obj.skeleton.boneInverses[hi], obj.bindMatrix);
+    const pos = obj.geometry.attributes.position;
+    const si = obj.geometry.attributes.skinIndex;
+    const sw = obj.geometry.attributes.skinWeight;
+    for (let i = 0; i < pos.count; i++) {
+      let w = 0;
+      for (let k = 0; k < 4; k++) if (si.getComponent(i, k) === hi) w += sw.getComponent(i, k);
+      if (w < 0.6) continue;
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      min.min(v);
+      max.max(v);
+      verts.push(v.x, v.y, v.z);
+      count++;
+    }
+  });
+  if (count < 30) return null;
+  headShapeCache = { center: min.clone().add(max).multiplyScalar(0.5), radius: max.clone().sub(min).multiplyScalar(0.5), count, verts };
+  return headShapeCache;
+}
+
+// 머리 앞쪽을 덮는 얼굴면: 타원체 조각의 각 점을 실제 머리 표면 바로 바깥으로 밀어 붙인다
+// (머리가 완전한 타원이 아니어서 생기는 이마 깨짐 방지). 두 선수가 같은 몸이라 한 번만 만든다
+const FACE_PATCH = { phiLength: Math.PI * 0.72, thetaStart: Math.PI * 0.16, thetaLength: Math.PI * 0.7, gap: 0.012, cone: 0.985 };
+let faceGeoCache = null;
+function buildFaceGeometry(head) {
+  if (faceGeoCache) return faceGeoCache;
+  const { center, radius, verts } = head;
+  const P = FACE_PATCH;
+  const geo = new THREE.SphereGeometry(1, 56, 40, Math.PI / 2 - P.phiLength / 2, P.phiLength, P.thetaStart, P.thetaLength);
+  const pos = geo.attributes.position;
+  const n = verts.length / 3;
+  const rel = new Float32Array(verts.length);
+  const len = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = verts[i * 3] - center.x, y = verts[i * 3 + 1] - center.y, z = verts[i * 3 + 2] - center.z;
+    const l = Math.hypot(x, y, z) || 1;
+    rel[i * 3] = x / l; rel[i * 3 + 1] = y / l; rel[i * 3 + 2] = z / l;
+    len[i] = l;
   }
+  const d = new THREE.Vector3();
+  const avg = (radius.x + radius.y + radius.z) / 3;
+  for (let j = 0; j < pos.count; j++) {
+    d.set(pos.getX(j) * radius.x, pos.getY(j) * radius.y, pos.getZ(j) * radius.z);
+    const ell = d.length();
+    d.normalize();
+    // 이 방향 근처(작은 원뿔 안) 머리 꼭짓점 중 가장 바깥 거리
+    let best = 0;
+    for (let i = 0; i < n; i++) {
+      const c = rel[i * 3] * d.x + rel[i * 3 + 1] * d.y + rel[i * 3 + 2] * d.z;
+      if (c > P.cone && len[i] > best) best = len[i];
+    }
+    const r = (best > 0 ? best : ell) + avg * P.gap;
+    pos.setXYZ(j, center.x + d.x * r, center.y + d.y * r, center.z + d.z * r);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  // 정면에서 본 얼굴면의 폭/높이 (사진이 늘어나지 않게 텍스처에 반영)
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  const aspect = (bb.max.x - bb.min.x) / (bb.max.y - bb.min.y);
+  faceGeoCache = { geo, aspect };
+  return faceGeoCache;
+}
+
+// 얼굴 사진 -> 마네킹 머리에 자연스럽게 섞이는 텍스처
+// - 얼굴 타원만 남기고 가장자리를 부드럽게 투명 처리 (사진 배경·테두리 제거)
+// - 채도·밝기를 마네킹 톤에 맞춤 (사진만 붕 뜨거나 블룸으로 빛나지 않게)
+const FACE_TONE = { saturation: 0.88, gain: 1, target: 135, lift: 0.02, zoom: 1.05, shiftUp: 0.02, oval: { cx: 0.5, cy: 0.53, rx: 0.35, ry: 0.47 }, feather: 0.24, glow: 0.38 };
+window.FACE_TONE = FACE_TONE;
+function photoFaceTexture(url, mirror, aspect = 1) {
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  if (mirror) {
+    // 사우스포는 몸을 좌우 반전시키므로 얼굴은 다시 뒤집어 원래대로
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.repeat.x = -1;
+    tex.offset.x = 1;
+  }
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const g = c.getContext('2d', { willReadFrequently: true });
+    // 텍스처는 가로=얼굴면 폭, 세로=얼굴면 높이로 늘어나므로, 사진 세로를 aspect(폭/높이)만큼 줄여 그려 원래 비율 유지
+    const ph = S * Math.min(1, aspect);
+    const top = (S - ph) / 2 - S * FACE_TONE.shiftUp;
+    const k = Math.max(S / img.naturalWidth, S / img.naturalHeight) * FACE_TONE.zoom;
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    g.save();
+    g.translate(0, top);
+    g.scale(1, ph / S);
+    g.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+    g.restore();
+    const d = g.getImageData(0, 0, S, S);
+    const px = d.data;
+    const { saturation, lift, oval, feather } = FACE_TONE;
+    // 자동 노출: 얼굴 타원 안 평균 밝기를 목표값에 맞춤 (어두운 사진·밝은 사진 모두 비슷한 톤으로)
+    let sum = 0, cnt = 0;
+    for (let y = 0; y < S; y += 2) {
+      for (let x = 0; x < S; x += 2) {
+        const nx = (x / S - oval.cx) / (oval.rx * 0.7), ny = ((y - top) / ph - oval.cy) / (oval.ry * 0.7);
+        if (nx * nx + ny * ny > 1) continue;
+        const i = (y * S + x) * 4;
+        if (px[i + 3] < 128) continue;
+        sum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        cnt++;
+      }
+    }
+    const mean = cnt ? sum / cnt : 128;
+    const gain = FACE_TONE.gain * Math.min(1.7, Math.max(0.75, FACE_TONE.target / mean));
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const i = (y * S + x) * 4;
+        const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        for (let ch = 0; ch < 3; ch++) {
+          const v = (lum + (px[i + ch] - lum) * saturation) * gain + lift * 255;
+          px[i + ch] = Math.max(0, Math.min(255, v));
+        }
+        const nx = (x / S - oval.cx) / oval.rx;
+        const ny = ((y - top) / ph - oval.cy) / oval.ry;
+        const r = Math.sqrt(nx * nx + ny * ny);
+        const t = Math.min(1, Math.max(0, (r - (1 - feather)) / feather));
+        px[i + 3] = Math.round(px[i + 3] * (1 - t * t * (3 - 2 * t)));
+      }
+    }
+    g.putImageData(d, 0, 0);
+    tex.needsUpdate = true;
+  };
+  img.onerror = () => console.warn('얼굴 이미지를 불러오지 못함', url);
+  img.src = url;
+  return tex;
+}
+
+// 얼굴 이미지가 없으면 임시 얼굴을 그린다
+function makeFaceTexture(p, aspect) {
+  if (p.face) return photoFaceTexture(p.face, p.stance === 'southpaw', aspect);
   const c = document.createElement('canvas');
   c.width = c.height = 256;
   const g = c.getContext('2d');
@@ -387,10 +533,11 @@ function makeFaceTexture(p) {
 
 // 이미지 파일을 화면 왼쪽/오른쪽 절반에 끌어다 놓으면 그 선수 얼굴이 바뀐다 (시연용)
 function setFace(index, url) {
-  const tex = new THREE.TextureLoader().load(url);
-  tex.colorSpace = THREE.SRGBColorSpace;
+  const tex = photoFaceTexture(url, fighters[index].p.stance === 'southpaw', faceGeoCache ? faceGeoCache.aspect : 1);
   fighters[index].faceMat.map = tex;
   fighters[index].faceMat.emissiveMap = tex;
+  fighters[index].faceMat.emissive = new THREE.Color(0xffffff);
+  fighters[index].faceMat.emissiveIntensity = FACE_TONE.glow;
   fighters[index].faceMat.needsUpdate = true;
 }
 stage.addEventListener('dragover', (e) => e.preventDefault());
@@ -454,14 +601,28 @@ function makeFighter(base, index) {
     findBone(model, side + 'Hand').add(glove);
   }
 
-  // 얼굴: 머리 앞에 캐리커처 이미지를 붙인다
-  // 얼굴은 어두운 조명에서도 알아볼 수 있게 스스로 살짝 빛나게 한다
-  const faceTex = makeFaceTexture(p);
-  const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.8, emissive: 0xffffff, emissiveMap: faceTex, emissiveIntensity: 0.45 });
-  // 머리 앞쪽을 감싸는 구 조각 (옆에서 봐도 얇은 판으로 안 보이게)
-  const faceGeo = new THREE.SphereGeometry(rawHeight * FACE.r, 32, 24, Math.PI / 2 - FACE.wide / 2, FACE.wide, Math.PI / 2 - FACE.tall / 2, FACE.tall);
-  const face = new THREE.Mesh(faceGeo, faceMat);
-  face.position.set(0, rawHeight * FACE.y, rawHeight * FACE.z);
+  // 얼굴: 머리 표면에 딱 붙는 곡면에 사진을 입힌다 (가장자리는 투명하게 섞임)
+  const headShape = measureHead(model);
+  const fitted = headShape ? buildFaceGeometry(headShape) : null;
+  const faceMat = new THREE.MeshStandardMaterial({
+    map: makeFaceTexture(p, fitted ? fitted.aspect : 1), transparent: true, roughness: 0.7, metalness: 0,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  // 어두운 조명·빨간 림라이트에서도 얼굴이 보이게 사진 자체를 은은하게 밝힌다
+  if (p.face) {
+    faceMat.emissiveMap = faceMat.map;
+    faceMat.emissive = new THREE.Color(0xffffff);
+    faceMat.emissiveIntensity = FACE_TONE.glow;
+  }
+  let face;
+  if (fitted) {
+    face = new THREE.Mesh(fitted.geo, faceMat);
+  } else {
+    const faceGeo = new THREE.SphereGeometry(rawHeight * FACE.r, 32, 24, Math.PI / 2 - FACE.wide / 2, FACE.wide, Math.PI / 2 - FACE.tall / 2, FACE.tall);
+    face = new THREE.Mesh(faceGeo, faceMat);
+    face.position.set(0, rawHeight * FACE.y, rawHeight * FACE.z);
+  }
+  face.renderOrder = 2;
   findBone(model, 'Head').add(face);
   scene.add(model);
 
@@ -929,7 +1090,7 @@ function shotTarget(shot) {
     const h = headPos(me);
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(me.model.quaternion);
     const side = new THREE.Vector3(-fwd.z, 0, fwd.x);
-    return { pos: h.clone().addScaledVector(fwd, 3.0).addScaledVector(side, 1.4).add(new THREE.Vector3(0, 0.05, 0)), look: h.clone().add(new THREE.Vector3(0, -0.45, 0)), fov: 24 };
+    return { pos: h.clone().addScaledVector(fwd, 3.2).addScaledVector(side, 1.0).add(new THREE.Vector3(0, 0.1, 0)), look: h.clone().add(new THREE.Vector3(0, -0.2, 0)), fov: 22 };
   }
   if (shot === 'tape') {
     return { pos: mid.clone().addScaledVector(perp, 12.5).setY(2.2), look: mid.clone().setY(0.45), fov: 30 };
@@ -1363,7 +1524,7 @@ async function start() {
   idleHeadZ = idleProbe.z;
   for (const react of ['hit', 'bighit', 'bodyhit']) hitPeaks[react] = probeHitPeak(base, clips[react]);
   window.setFace = setFace;
-  window.dbg = { cut, cam, ring, fighters, moveInfo, idleHeadZ, hitPeaks, PLAYERS, sim: () => simulateFight(PLAYERS[0], PLAYERS[1]) };
+  window.dbg = { cut, cam, ring, fighters, measureHead, camera, moveInfo, idleHeadZ, hitPeaks, PLAYERS, sim: () => simulateFight(PLAYERS[0], PLAYERS[1]) };
 
   fighters.push(makeFighter(base, 0));
   fighters.push(makeFighter(base, 1));

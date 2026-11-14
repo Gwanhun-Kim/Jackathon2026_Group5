@@ -250,6 +250,7 @@
     if (photo) {
       const id = "face" + (++uid) + Math.random().toString(36).slice(2, 6);
       out.push(`<defs><clipPath id="${id}"><circle cx="${cx}" cy="${f(headCY)}" r="${headR - 1}"/></clipPath></defs>`);
+      out.push(`<circle cx="${cx}" cy="${f(headCY)}" r="${headR}" fill="${SKIN}"/>`);
       out.push(`<image href="${photo}" x="${f(cx - headR - 2)}" y="${f(headCY - headR - 2)}" width="${f(headR * 2 + 4)}" height="${f(headR * 2 + 4)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`);
       out.push(`<circle cx="${cx}" cy="${f(headCY)}" r="${headR}" fill="none" stroke="${INK}" stroke-width="${ow}"/>`);
     } else {

@@ -173,3 +173,6 @@ input[type="text"], select {
 select:disabled { opacity: .5; }
 .credits { font-size: 11px; color: var(--muted); padding-bottom: 28px; line-height: 1.7; }
 .credits a { color: inherit; }
+.face-adjust { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; color: var(--muted); }
+.face-adjust label { display: grid; gap: 2px; }
+.face-adjust input { width: 100%; accent-color: var(--accent); }
