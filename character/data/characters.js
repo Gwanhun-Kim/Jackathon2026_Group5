@@ -1,0 +1,225 @@
+// 자동 생성: node tools/export-images.js (원본: ../characters.json)
+window.CHARACTER_DATA = {
+  "description": "스포츠 캐릭터 6명의 게임용 초기 스탯",
+  "scale": {
+    "min": 1,
+    "max": 10
+  },
+  "statDefinitions": {
+    "stamina": "체력: 최대 스태미나와 회복 능력",
+    "power": "파워: 공격 피해량",
+    "attackSpeed": "공격 속도: 공격 준비 및 회복 속도",
+    "toughness": "맷집: 최대 HP와 KO 저항",
+    "moveSpeed": "이동 속도: 접근 및 후퇴 속도",
+    "reach": "사거리: 공격이 닿는 거리",
+    "defense": "방어: 가드 시 피해 경감과 밀림 저항"
+  },
+  "characters": [
+    {
+      "id": "ohtani",
+      "name": "오타니",
+      "stats": {
+        "stamina": 7,
+        "power": 9,
+        "attackSpeed": 5,
+        "toughness": 7,
+        "moveSpeed": 6,
+        "reach": 10,
+        "defense": 5
+      },
+      "specialAbility": {
+        "id": "windup",
+        "name": "와인드업",
+        "description": "맨손 공격의 준비 시간이 30% 증가하는 대신 피해량이 35% 증가한다.",
+        "trigger": "every_attack",
+        "conditions": {},
+        "effects": [
+          {
+            "stat": "attackStartup",
+            "operation": "multiply",
+            "value": 1.3
+          },
+          {
+            "stat": "damage",
+            "operation": "multiply",
+            "value": 1.35
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
+      }
+    },
+    {
+      "id": "ngannou",
+      "name": "은가누",
+      "stats": {
+        "stamina": 5,
+        "power": 10,
+        "attackSpeed": 6,
+        "toughness": 10,
+        "moveSpeed": 5,
+        "reach": 5,
+        "defense": 8
+      },
+      "specialAbility": {
+        "id": "guard_break",
+        "name": "가드 파괴",
+        "description": "상대 가드의 피해 경감률을 40% 무시한다. 경감률이 50%라면 30%로 적용한다.",
+        "trigger": "hit_guard",
+        "conditions": {},
+        "effects": [
+          {
+            "stat": "opponentGuardReduction",
+            "operation": "multiply",
+            "value": 0.6
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
+      }
+    },
+    {
+      "id": "son",
+      "name": "손흥민",
+      "stats": {
+        "stamina": 9,
+        "power": 6,
+        "attackSpeed": 9,
+        "toughness": 5,
+        "moveSpeed": 10,
+        "reach": 5,
+        "defense": 5
+      },
+      "specialAbility": {
+        "id": "breakthrough",
+        "name": "돌파 공격",
+        "description": "상대를 향해 0.8초 이상 연속 전진한 직후 시작하는 공격의 피해량이 20% 증가한다. 재사용 대기시간은 4초다.",
+        "trigger": "attack_after_continuous_forward_movement",
+        "conditions": {
+          "minimumForwardMovementSeconds": 0.8,
+          "resetOnMovementInterruption": true
+        },
+        "effects": [
+          {
+            "stat": "damage",
+            "operation": "multiply",
+            "value": 1.2
+          }
+        ],
+        "affectedAttacks": 1,
+        "cooldownSeconds": 4
+      }
+    },
+    {
+      "id": "kim",
+      "name": "김연경",
+      "stats": {
+        "stamina": 8,
+        "power": 7,
+        "attackSpeed": 8,
+        "toughness": 6,
+        "moveSpeed": 6,
+        "reach": 8,
+        "defense": 6
+      },
+      "specialAbility": {
+        "id": "block_counter",
+        "name": "블로킹 후 반격",
+        "description": "가드 성공 후 1초 이내에 시작하는 다음 공격의 준비 시간이 30% 감소한다. 재사용 대기시간은 3초다.",
+        "trigger": "attack_after_successful_guard",
+        "conditions": {
+          "attackStartWindowSeconds": 1
+        },
+        "effects": [
+          {
+            "stat": "attackStartup",
+            "operation": "multiply",
+            "value": 0.7
+          }
+        ],
+        "affectedAttacks": 1,
+        "cooldownSeconds": 3
+      }
+    },
+    {
+      "id": "ha",
+      "name": "하승진",
+      "stats": {
+        "stamina": 5,
+        "power": 8,
+        "attackSpeed": 3,
+        "toughness": 9,
+        "moveSpeed": 4,
+        "reach": 10,
+        "defense": 10
+      },
+      "specialAbility": {
+        "id": "keep_out",
+        "name": "접근 저지",
+        "description": "공격 적중 시 밀어내는 힘이 50% 증가한다.",
+        "trigger": "on_hit",
+        "conditions": {},
+        "effects": [
+          {
+            "stat": "knockback",
+            "operation": "multiply",
+            "value": 1.5
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
+      }
+    },
+    {
+      "id": "park",
+      "name": "박태환",
+      "stats": {
+        "stamina": 10,
+        "power": 6,
+        "attackSpeed": 7,
+        "toughness": 7,
+        "moveSpeed": 7,
+        "reach": 6,
+        "defense": 6
+      },
+      "specialAbility": {
+        "id": "pace_control",
+        "name": "페이스 유지",
+        "description": "스태미나가 최대치의 30% 이하가 되면 회복량이 50% 증가하며, 60% 이상으로 회복하면 효과가 종료된다.",
+        "trigger": "stamina_threshold",
+        "conditions": {
+          "activateAtOrBelowStaminaRatio": 0.3,
+          "deactivateAtOrAboveStaminaRatio": 0.6
+        },
+        "effects": [
+          {
+            "stat": "staminaRegen",
+            "operation": "multiply",
+            "value": 1.5
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
+      }
+    }
+  ],
+  "combatStyle": "unarmed",
+  "specialAbilityConventions": {
+    "multipliers": "기본값에 곱하는 배율. 1.35는 35% 증가, 0.7은 30% 감소.",
+    "ratios": "0~1 비율. 0.3은 30%.",
+    "timeUnit": "seconds",
+    "cooldownStart": "효과가 적용되는 공격을 시작한 시점",
+    "stacking": "같은 특수 효과는 중첩되지 않음",
+    "conditions": "조건이 없으면 빈 객체. 세부 조건은 trigger별로 해석한다.",
+    "effects": "stat에 지정된 값에 operation을 적용한다. multiply는 기존 값에 value를 곱한다.",
+    "affectedAttacks": "1은 발동 후 해당 공격 한 번에 적용. null은 공격 횟수 제한 없이 trigger와 conditions가 적용 범위를 결정한다.",
+    "cooldownSeconds": "0은 재사용 대기시간 없음.",
+    "effectStatDefinitions": {
+      "attackStartup": "자신의 공격 준비 시간",
+      "damage": "자신의 공격 피해량",
+      "opponentGuardReduction": "상대의 가드 피해 경감률",
+      "knockback": "자신의 공격이 상대를 밀어내는 힘",
+      "staminaRegen": "자신의 스태미나 회복량"
+    }
+  }
+};
