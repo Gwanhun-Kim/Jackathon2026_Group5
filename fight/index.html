@@ -411,6 +411,7 @@ function setFace(index, url) {
   const tex = new THREE.TextureLoader().load(url);
   tex.colorSpace = THREE.SRGBColorSpace;
   fighters[index].faceMat.map = tex;
+  fighters[index].faceMat.emissiveMap = tex;
   fighters[index].faceMat.needsUpdate = true;
 }
 stage.addEventListener('dragover', (e) => e.preventDefault());
@@ -475,7 +476,9 @@ function makeFighter(base, index) {
   }
 
   // 얼굴: 머리 앞에 캐리커처 이미지를 붙인다
-  const faceMat = new THREE.MeshStandardMaterial({ map: makeFaceTexture(p), transparent: true, roughness: 0.8 });
+  // 얼굴은 어두운 조명에서도 알아볼 수 있게 스스로 살짝 빛나게 한다
+  const faceTex = makeFaceTexture(p);
+  const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.8, emissive: 0xffffff, emissiveMap: faceTex, emissiveIntensity: 0.45 });
   // 머리 앞쪽을 감싸는 구 조각 (옆에서 봐도 얇은 판으로 안 보이게)
   const faceGeo = new THREE.SphereGeometry(rawHeight * FACE.r, 32, 24, Math.PI / 2 - FACE.wide / 2, FACE.wide, Math.PI / 2 - FACE.tall / 2, FACE.tall);
   const face = new THREE.Mesh(faceGeo, faceMat);
