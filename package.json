@@ -1,0 +1,12 @@
+{
+  "name": "jackathon2026-group5",
+  "private": true,
+  "description": "그래서 누가 이김? — Vercel 서버 함수(api/)용 의존성",
+  "scripts": {
+    "test:character-api": "node tests/character-api.test.mjs",
+    "try:character": "node --env-file=.env tests/try-character.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0"
+  }
+}
