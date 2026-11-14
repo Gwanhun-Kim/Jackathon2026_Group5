@@ -29,6 +29,12 @@
 - 저장하면 로스터 7번째 칸에 들어가고, 브라우저(localStorage `jeck.customCharacter.v1`)에 남는다.
 - `fight/`가 읽는 **`appearance`**는 자동으로 계산된다. 키 `heightCm`는 사거리, 체형 `build`는 맷집과 파워, 파이팅 스타일 `style`은 가장 높은 스탯(격투기를 고르면 킥복서)으로 정한다. 색 `color`는 유니폼 색을 쓴다.
 
+## 얼굴 사진
+- **선수 6명:** 위키미디어 공용(Wikimedia Commons)의 자유 라이선스 사진에서 얼굴만 잘라 썼다. 파일은 `images/faces/{id}.jpg`(256×256)이다. 출처·저작자·라이선스는 `images/faces/credits.json`과 화면 맨 아래에 표기돼 있다. CC BY/BY-SA 조건이라 **출처 표기를 지우면 안 된다.**
+- **커스텀:** "사진 올리기"로 아무 사진이나 넣으면 위쪽 가운데를 기준으로 정사각형으로 잘라 얼굴에 넣는다. 사진은 브라우저에만 저장된다(256px JPEG data URL, 약 10~30KB).
+- **fight/ 연동:** `appearance.face`에 얼굴 이미지 주소가 들어간다. 선수는 `../character/images/faces/{id}.jpg`, 커스텀은 data URL이다. fight/는 이 값을 머리 텍스처로 쓴다.
+- `data/faces.js`는 file:// 로 열 때와 PNG로 내보낼 때 쓰려고 얼굴을 data URL로 담아둔 파일이다(자동 생성).
+
 ## 이미지가 스탯을 반영하는 방식
 | 스탯 | 그림에서 바뀌는 것 |
 |---|---|

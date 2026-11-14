@@ -40,8 +40,33 @@
       heightCm: Math.round(165 + nv(st.reach) * 35),
       build: bulk < 0.3 ? "slim" : bulk < 0.62 ? "normal" : st.power >= st.toughness ? "muscle" : "chubby",
       style: c.look.sport === "mma" ? "kickboxer" : STYLE_BY_STAT[top],
+      ...(c.look.face ? { face: c.look.face } : {}),
     };
   }
+  const FACES = window.FACE_DATA || {};
+  const CREDITS = window.FACE_CREDITS || {};
+
+  // 올린 사진 -> 위쪽 가운데 기준 정사각형 256px JPEG (data URL)
+  function readFace(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !/^image\//.test(file.type)) return reject(new Error("이미지 파일만 넣을 수 있어요"));
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - side) / 2;
+        const sy = (img.naturalHeight - side) * 0.2;
+        const cv = document.createElement("canvas");
+        cv.width = cv.height = 256;
+        cv.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
+        URL.revokeObjectURL(url);
+        resolve(cv.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("이 형식은 읽을 수 없어요 (JPG·PNG로 넣어주세요)")); };
+      img.src = url;
+    });
+  }
+
   const ABILITIES = DATA.characters.filter((c) => c.specialAbility).map((c) => ({ from: c, ability: c.specialAbility }));
 
   // ---------- helpers
@@ -78,7 +103,11 @@
   }
 
   // ---------- roster
-  const base = DATA.characters.map((c) => Object.assign({}, c, { look: Art.lookFor(c) }));
+  const base = DATA.characters.map((c) => {
+    const look = Art.lookFor(c);
+    if (FACES[c.id]) look.face = FACES[c.id];
+    return Object.assign({}, c, { look });
+  });
   let custom = store.get();
   if (custom && custom.stats && custom.look && !custom.appearance) custom.appearance = appearanceOf(custom);
   let selectedId = null;
@@ -164,9 +193,13 @@
 
   function exportJson() {
     const list = roster().map((c) => {
-      const o = { id: c.id, name: c.name, stats: c.stats, title: titleOf(c.stats), look: c.look, image: `images/${c.id}.png` };
+      const o = { id: c.id, name: c.name, stats: c.stats, title: titleOf(c.stats), look: Object.assign({}, c.look), image: `images/${c.id}.png` };
       if (c.specialAbility) o.specialAbility = c.specialAbility;
-      if (c.appearance) o.appearance = c.appearance;
+      if (c.appearance) o.appearance = Object.assign({}, c.appearance);
+      if (!c.custom && FACES[c.id]) {
+        o.look.face = `images/faces/${c.id}.jpg`;
+        o.appearance = Object.assign({}, o.appearance, { face: `../character/images/faces/${c.id}.jpg` });
+      }
       if (c.custom) o.custom = true;
       return o;
     });
@@ -207,6 +240,18 @@
     $("ability").innerHTML = ABILITIES.map((a) => `<option value="${esc(a.ability.id)}">${esc(a.ability.name)} (${esc(a.from.name)})</option>`).join("");
     $("ability").addEventListener("change", (e) => { draft.abilityId = e.target.value; draft.abilityTouched = true; syncControls(); });
     $("abilityField").hidden = ABILITIES.length === 0;
+
+    $("faceFile").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      try {
+        draft.look.face = await readFace(file);
+        syncControls();
+        toast("얼굴 사진을 넣었어요");
+      } catch (err) { toast(err.message); }
+    });
+    $("faceClear").addEventListener("click", () => { delete draft.look.face; syncControls(); });
 
     $("name").addEventListener("input", (e) => { draft.name = e.target.value; syncControls(); });
 
@@ -264,7 +309,7 @@
     }
     setStats(st);
     const sports = Object.keys(Art.SPORTS);
-    draft.look.sport = sports[Math.floor(Math.random() * sports.length)];
+    draft.look.sport = sports[Math.floor(Math.random() * sports.length)];  // 올린 얼굴 사진은 그대로 둔다
     draft.look.hair = Art.SPORTS[draft.look.sport].hair;
     draft.look.color = COLORS[Math.floor(Math.random() * COLORS.length)];
     draft.look.accent = ACCENT_FOR[draft.look.color] || "#111827";
@@ -292,6 +337,11 @@
     $("sports").querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.sport === draft.look.sport)));
     $("colors").querySelectorAll(".swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.color === draft.look.color)));
     $("hair").value = draft.look.hair;
+    $("hair").disabled = !!draft.look.face;
+    $("faceThumb").hidden = !draft.look.face;
+    if (draft.look.face) $("faceThumb").src = draft.look.face;
+    $("faceClear").hidden = !draft.look.face;
+    $("faceLabel").textContent = draft.look.face ? "다른 사진으로 바꾸기" : "사진 올리기";
     if (document.activeElement !== $("name")) $("name").value = draft.name;
 
     const p = $("points");
@@ -324,6 +374,7 @@
     selectedId = null;
     renderRoster();
     select("custom");
+    if (!persisted && custom.look.face) { /* 사진 때문에 저장 공간이 부족할 수 있음 */ }
     toast(persisted ? `${custom.name} 저장 완료! 로스터 7번째 자리에 들어갔어요` : `${custom.name} 추가됨 (이 브라우저에선 새로고침하면 사라져요)`);
   }
 
@@ -334,6 +385,15 @@
     setStats(c.stats);
     draft.look = Object.assign({}, c.look);
     syncControls();
+  }
+
+  // ---------- 얼굴 사진 출처 (CC 라이선스 표기)
+  const credits = Object.entries(CREDITS);
+  if (credits.length) {
+    $("credits").innerHTML = "선수 얼굴 사진 출처 (Wikimedia Commons): " + credits.map(([id, c]) => {
+      const who = (base.find((b) => b.id === id) || {}).name || id;
+      return `<a href="${esc(c.source)}" target="_blank" rel="noopener">${esc(who)}</a> © ${esc(c.author)}, ${esc(c.license)}`;
+    }).join(" · ") + ". 얼굴 부분만 잘라 사용함.";
   }
 
   // ---------- wire up

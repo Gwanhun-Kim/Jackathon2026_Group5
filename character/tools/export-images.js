@@ -23,7 +23,16 @@ const ngannou = base.characters.find((c) => c.id === "ngannou");
 if (ngannou && ngannou.specialAbility) example.specialAbility = JSON.parse(JSON.stringify(ngannou.specialAbility));
 example.appearance = { color: "#e11d48", heightCm: 186, build: "muscle", style: "counter" };
 
-const all = base.characters.map((c) => Object.assign({}, c, { look: Art.lookFor(c) })).concat([example]);
+// 얼굴 사진: images/faces/{id}.jpg -> SVG 안에 넣을 data URL
+const faceDir = path.join(root, "images", "faces");
+const FACES = {};
+for (const c of base.characters) {
+  const fp = path.join(faceDir, `${c.id}.jpg`);
+  if (fs.existsSync(fp)) FACES[c.id] = "data:image/jpeg;base64," + fs.readFileSync(fp).toString("base64");
+}
+const CREDITS = fs.existsSync(path.join(faceDir, "credits.json")) ? JSON.parse(fs.readFileSync(path.join(faceDir, "credits.json"), "utf8")) : { faces: {} };
+
+const all = base.characters.map((c) => Object.assign({}, c, { look: Object.assign(Art.lookFor(c), FACES[c.id] ? { face: FACES[c.id] } : {}) })).concat([example]);
 
 fs.mkdirSync(path.join(root, "images"), { recursive: true });
 for (const c of all) {
@@ -33,7 +42,15 @@ for (const c of all) {
 const out = Object.assign({}, base, {
   description: "기본 6명 + 커스텀 1명 (커스텀은 예시값, 실제로는 index.html에서 만든 캐릭터로 교체)",
   budget: 49,
-  characters: all.map((c) => Object.assign({}, c, { image: `images/${c.id}.png` })),
+  characters: all.map((c) => {
+    const o = Object.assign({}, c, { image: `images/${c.id}.png` });
+    if (FACES[c.id]) {
+      // JSON에는 base64 대신 파일 경로를 넣는다 (fight/ 기준 경로는 appearance.face)
+      o.look = Object.assign({}, c.look, { face: `images/faces/${c.id}.jpg` });
+      o.appearance = Object.assign({}, c.appearance || {}, { face: `../character/images/faces/${c.id}.jpg` });
+    }
+    return o;
+  }),
 });
 fs.writeFileSync(path.join(root, "data", "characters_7.json"), JSON.stringify(out, null, 2));
 
@@ -51,4 +68,12 @@ console.log("exported", all.map((c) => c.id).join(", "));
 fs.writeFileSync(
   path.join(root, "data", "characters.js"),
   "// 자동 생성: node tools/export-images.js (원본: ../characters.json)\nwindow.CHARACTER_DATA = " + JSON.stringify(base, null, 2) + ";\n"
+);
+
+// 얼굴 사진을 file:// 에서도 쓰고 PNG로도 내보낼 수 있게 data URL로 저장
+fs.writeFileSync(
+  path.join(root, "data", "faces.js"),
+  "// 자동 생성: node tools/export-images.js (원본: images/faces/*.jpg)\n" +
+    "window.FACE_DATA = " + JSON.stringify(FACES) + ";\n" +
+    "window.FACE_CREDITS = " + JSON.stringify(CREDITS.faces) + ";\n"
 );

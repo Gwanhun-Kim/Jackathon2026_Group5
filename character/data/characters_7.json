@@ -51,9 +51,13 @@
         "sport": "baseball",
         "color": "#1d4ed8",
         "accent": "#ef4444",
-        "hair": "cap"
+        "hair": "cap",
+        "face": "images/faces/ohtani.jpg"
       },
-      "image": "images/ohtani.png"
+      "image": "images/ohtani.png",
+      "appearance": {
+        "face": "../character/images/faces/ohtani.jpg"
+      }
     },
     {
       "id": "ngannou",
@@ -87,9 +91,13 @@
         "sport": "mma",
         "color": "#1f2937",
         "accent": "#f59e0b",
-        "hair": "bald"
+        "hair": "bald",
+        "face": "images/faces/ngannou.jpg"
       },
-      "image": "images/ngannou.png"
+      "image": "images/ngannou.png",
+      "appearance": {
+        "face": "../character/images/faces/ngannou.jpg"
+      }
     },
     {
       "id": "son",
@@ -126,9 +134,13 @@
         "sport": "soccer",
         "color": "#f8fafc",
         "accent": "#1e3a8a",
-        "hair": "short"
+        "hair": "short",
+        "face": "images/faces/son.jpg"
       },
-      "image": "images/son.png"
+      "image": "images/son.png",
+      "appearance": {
+        "face": "../character/images/faces/son.jpg"
+      }
     },
     {
       "id": "kim",
@@ -164,9 +176,13 @@
         "sport": "volleyball",
         "color": "#dc2626",
         "accent": "#facc15",
-        "hair": "ponytail"
+        "hair": "ponytail",
+        "face": "images/faces/kim.jpg"
       },
-      "image": "images/kim.png"
+      "image": "images/kim.png",
+      "appearance": {
+        "face": "../character/images/faces/kim.jpg"
+      }
     },
     {
       "id": "ha",
@@ -200,9 +216,13 @@
         "sport": "basketball",
         "color": "#7c3aed",
         "accent": "#f97316",
-        "hair": "short"
+        "hair": "short",
+        "face": "images/faces/ha.jpg"
       },
-      "image": "images/ha.png"
+      "image": "images/ha.png",
+      "appearance": {
+        "face": "../character/images/faces/ha.jpg"
+      }
     },
     {
       "id": "park",
@@ -239,9 +259,13 @@
         "sport": "swimming",
         "color": "#0284c7",
         "accent": "#facc15",
-        "hair": "swimcap"
+        "hair": "swimcap",
+        "face": "images/faces/park.jpg"
       },
-      "image": "images/park.png"
+      "image": "images/park.png",
+      "appearance": {
+        "face": "../character/images/faces/park.jpg"
+      }
     },
     {
       "id": "custom",

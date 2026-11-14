@@ -70,6 +70,15 @@
           <span>종목 스타일</span>
           <div class="chips" id="sports"></div>
         </div>
+        <div class="field">
+          <span>얼굴 사진 (선택)</span>
+          <div class="face-row">
+            <img id="faceThumb" class="face-thumb" alt="올린 얼굴 사진" hidden>
+            <label class="btn ghost file-btn"><input id="faceFile" type="file" accept="image/*"><span id="faceLabel">사진 올리기</span></label>
+            <button class="btn ghost" id="faceClear" type="button" hidden>사진 빼기</button>
+          </div>
+          <small class="ability-desc">얼굴이 가운데 오게 찍은 정면 사진이 잘 나와요. 사진은 이 브라우저에만 저장돼요.</small>
+        </div>
         <div class="field two">
           <div>
             <span>유니폼 색</span>
@@ -96,10 +105,12 @@
     </div>
   </section>
 </main>
+<footer class="wrap credits" id="credits"></footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="data/characters.js"></script>
+<script src="data/faces.js"></script>
 <script src="art.js"></script>
 <script src="app.js"></script>
 </body>

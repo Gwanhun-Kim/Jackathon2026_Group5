@@ -127,6 +127,7 @@
     }
   }
 
+  let uid = 0;
   function render(character, opts) {
     opts = opts || {};
     const s = character.stats || {};
@@ -146,7 +147,8 @@
     const torsoH = lerp(58, 76, reach);
     const hipY = groundY - 8 - legLen;
     const shoulderY = hipY - torsoH;
-    const headR = 24;
+    const photo = look.face || null;  // 얼굴 사진 (data URL 또는 이미지 주소)
+    const headR = photo ? 29 : 24;
     const headCY = shoulderY - headR - 7;
     const topW = lerp(46, 80, bulk);
     const waistW = lerp(36, 62, bulk);
@@ -191,7 +193,7 @@
       out.push(`<line x1="${f(cx - 46)}" y1="${f(shoulderY - 26)}" x2="${f(cx + 26)}" y2="${f(hipY + 6)}" stroke="${INK}" stroke-width="13" stroke-linecap="round"/>`);
       out.push(`<line x1="${f(cx - 46)}" y1="${f(shoulderY - 26)}" x2="${f(cx + 26)}" y2="${f(hipY + 6)}" stroke="#c98b4f" stroke-width="8" stroke-linecap="round"/>`);
     }
-    if (look.hair === "ponytail") {
+    if (look.hair === "ponytail" && !photo) {
       out.push(`<ellipse cx="${cx - headR + 2}" cy="${f(headCY + 4)}" rx="10" ry="17" fill="${HAIR}" stroke="${INK}" stroke-width="${ow}" transform="rotate(20 ${cx - headR + 2} ${f(headCY + 4)})"/>`);
     }
 
@@ -244,8 +246,14 @@
     out.push(`<rect x="${f(cx - 8)}" y="${f(headCY + headR - 6)}" width="16" height="${f(shoulderY - headCY - headR + 8)}" fill="${SKIN}" stroke="${INK}" stroke-width="${ow}"/>`);
     out.push(`<circle cx="${cx}" cy="${f(headCY)}" r="${headR}" fill="${SKIN}" stroke="${INK}" stroke-width="${ow}"/>`);
 
-    // 머리 모양
     const top = headCY - headR;
+    if (photo) {
+      const id = "face" + (++uid) + Math.random().toString(36).slice(2, 6);
+      out.push(`<defs><clipPath id="${id}"><circle cx="${cx}" cy="${f(headCY)}" r="${headR - 1}"/></clipPath></defs>`);
+      out.push(`<image href="${photo}" x="${f(cx - headR - 2)}" y="${f(headCY - headR - 2)}" width="${f(headR * 2 + 4)}" height="${f(headR * 2 + 4)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`);
+      out.push(`<circle cx="${cx}" cy="${f(headCY)}" r="${headR}" fill="none" stroke="${INK}" stroke-width="${ow}"/>`);
+    } else {
+    // 머리 모양
     if (look.hair === "short" || look.hair === "ponytail" || look.hair === "headband") {
       out.push(`<path d="M${f(cx - headR - 1)},${f(headCY + 2)} Q${f(cx - headR - 2)},${f(top - 8)} ${cx},${f(top - 5)} Q${f(cx + headR + 4)},${f(top - 6)} ${f(cx + headR + 1)},${f(headCY - 4)} Q${f(cx + 6)},${f(top + 10)} ${f(cx - 8)},${f(top + 8)} Q${f(cx - headR + 6)},${f(top + 12)} ${f(cx - headR - 1)},${f(headCY + 2)} Z" fill="${HAIR}" stroke="${INK}" stroke-width="${ow}" stroke-linejoin="round"/>`);
     }
@@ -275,6 +283,7 @@
     out.push(`<circle cx="${f(cx + 16)}" cy="${f(headCY + 8)}" r="2.6" fill="${INK}"/>`);
     if ((s.stamina || 0) >= 8) out.push(`<path d="M${f(cx + 4)},${f(headCY + 15)} Q${f(cx + 10)},${f(headCY + 20)} ${f(cx + 16)},${f(headCY + 15)}" fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>`);
     else out.push(`<line x1="${f(cx + 5)}" y1="${f(headCY + 16)}" x2="${f(cx + 15)}" y2="${f(headCY + 16)}" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>`);
+    }
 
     // ---- 오른팔 (스트레이트) + 이펙트
     if ((s.power || 0) >= 9) {
