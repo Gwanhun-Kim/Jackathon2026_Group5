@@ -77,7 +77,11 @@
             <label class="btn ghost file-btn"><input id="faceFile" type="file" accept="image/*"><span id="faceLabel">사진 올리기</span></label>
             <button class="btn ghost" id="faceClear" type="button" hidden>사진 빼기</button>
           </div>
-          <small class="ability-desc">얼굴이 가운데 오게 찍은 정면 사진이 잘 나와요. 사진은 이 브라우저에만 저장돼요.</small>
+          <div class="face-adjust" id="faceAdjust" hidden>
+            <label>얼굴 확대 <input id="faceZoom" type="range" min="1" max="3" step="0.05"></label>
+            <label>위아래 <input id="faceY" type="range" min="0.15" max="0.75" step="0.01"></label>
+          </div>
+          <small class="ability-desc">정면 사진이 잘 나와요. 얼굴이 동그라미를 꽉 채우게 맞추면 경기 화면에서도 선명해요. 사진은 이 브라우저에만 저장돼요.</small>
         </div>
         <div class="field two">
           <div>

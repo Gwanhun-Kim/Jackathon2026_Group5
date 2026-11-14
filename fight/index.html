@@ -431,7 +431,7 @@ function buildFaceGeometry(head) {
 // 얼굴 사진 -> 마네킹 머리에 자연스럽게 섞이는 텍스처
 // - 얼굴 타원만 남기고 가장자리를 부드럽게 투명 처리 (사진 배경·테두리 제거)
 // - 채도·밝기를 마네킹 톤에 맞춤 (사진만 붕 뜨거나 블룸으로 빛나지 않게)
-const FACE_TONE = { saturation: 0.62, gain: 1, target: 118, lift: 0.02, zoom: 1.12, shiftUp: 0.02, oval: { cx: 0.5, cy: 0.53, rx: 0.36, ry: 0.47 }, feather: 0.32 };
+const FACE_TONE = { saturation: 0.88, gain: 1, target: 135, lift: 0.02, zoom: 1.05, shiftUp: 0.02, oval: { cx: 0.5, cy: 0.53, rx: 0.35, ry: 0.47 }, feather: 0.24, glow: 0.38 };
 window.FACE_TONE = FACE_TONE;
 function photoFaceTexture(url, mirror, aspect = 1) {
   const S = 256;
@@ -535,6 +535,8 @@ function setFace(index, url) {
   const tex = photoFaceTexture(url, fighters[index].p.stance === 'southpaw', faceGeoCache ? faceGeoCache.aspect : 1);
   fighters[index].faceMat.map = tex;
   fighters[index].faceMat.emissiveMap = tex;
+  fighters[index].faceMat.emissive = new THREE.Color(0xffffff);
+  fighters[index].faceMat.emissiveIntensity = FACE_TONE.glow;
   fighters[index].faceMat.needsUpdate = true;
 }
 stage.addEventListener('dragover', (e) => e.preventDefault());
@@ -602,9 +604,15 @@ function makeFighter(base, index) {
   const headShape = measureHead(model);
   const fitted = headShape ? buildFaceGeometry(headShape) : null;
   const faceMat = new THREE.MeshStandardMaterial({
-    map: makeFaceTexture(p, fitted ? fitted.aspect : 1), transparent: true, roughness: 0.75, metalness: 0,
+    map: makeFaceTexture(p, fitted ? fitted.aspect : 1), transparent: true, roughness: 0.7, metalness: 0,
     depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
+  // 어두운 조명·빨간 림라이트에서도 얼굴이 보이게 사진 자체를 은은하게 밝힌다
+  if (p.face) {
+    faceMat.emissiveMap = faceMat.map;
+    faceMat.emissive = new THREE.Color(0xffffff);
+    faceMat.emissiveIntensity = FACE_TONE.glow;
+  }
   let face;
   if (fitted) {
     face = new THREE.Mesh(fitted.geo, faceMat);

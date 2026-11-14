@@ -46,26 +46,39 @@
   const FACES = window.FACE_DATA || {};
   const CREDITS = window.FACE_CREDITS || {};
 
-  // 올린 사진 -> 위쪽 가운데 기준 정사각형 256px JPEG (data URL)
-  function readFace(file) {
+  // 올린 사진을 불러온다 (원본은 이 화면에서만 들고 있고, 저장되는 건 잘라낸 256px 얼굴뿐)
+  function loadImage(file) {
     return new Promise((resolve, reject) => {
       if (!file || !/^image\//.test(file.type)) return reject(new Error("이미지 파일만 넣을 수 있어요"));
       const url = URL.createObjectURL(file);
       const img = new Image();
-      img.onload = () => {
-        const side = Math.min(img.naturalWidth, img.naturalHeight);
-        const sx = (img.naturalWidth - side) / 2;
-        const sy = (img.naturalHeight - side) * 0.2;
-        const cv = document.createElement("canvas");
-        cv.width = cv.height = 256;
-        cv.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
-        URL.revokeObjectURL(url);
-        resolve(cv.toDataURL("image/jpeg", 0.85));
-      };
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("이 형식은 읽을 수 없어요 (JPG·PNG로 넣어주세요)")); };
       img.src = url;
     });
   }
+
+  // 얼굴 위주로 자르는 기본값: 세로 사진(증명사진·셀카)은 가운데 위쪽 얼굴, 그 외는 위쪽 가운데
+  function defaultCrop(img) {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    return h > w * 1.1 ? { zoom: 1.6, y: 0.38 } : { zoom: 1.3, y: 0.42 };
+  }
+
+  // zoom: 짧은 변 대비 확대 배율, y: 얼굴 중심의 세로 위치(0~1) -> 정사각형 256px JPEG
+  function cropFace(img, crop) {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const side = Math.min(w, h) / crop.zoom;
+    const sx = Math.min(w - side, Math.max(0, w / 2 - side / 2));
+    const sy = Math.min(h - side, Math.max(0, crop.y * h - side / 2));
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 256;
+    const g = cv.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    g.drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
+    return cv.toDataURL("image/jpeg", 0.9);
+  }
+  let faceImg = null;
+  let faceCrop = null;
 
   const ABILITIES = DATA.characters.filter((c) => c.specialAbility).map((c) => ({ from: c, ability: c.specialAbility }));
 
@@ -246,12 +259,22 @@
       e.target.value = "";
       if (!file) return;
       try {
-        draft.look.face = await readFace(file);
+        faceImg = await loadImage(file);
+        faceCrop = defaultCrop(faceImg);
+        draft.look.face = cropFace(faceImg, faceCrop);
         syncControls();
-        toast("얼굴 사진을 넣었어요");
+        toast("얼굴 사진을 넣었어요. 아래 슬라이더로 얼굴 위치를 맞춰보세요");
       } catch (err) { toast(err.message); }
     });
-    $("faceClear").addEventListener("click", () => { delete draft.look.face; syncControls(); });
+    for (const [id, key] of [["faceZoom", "zoom"], ["faceY", "y"]]) {
+      $(id).addEventListener("input", (e) => {
+        if (!faceImg) return;
+        faceCrop[key] = +e.target.value;
+        draft.look.face = cropFace(faceImg, faceCrop);
+        syncControls();
+      });
+    }
+    $("faceClear").addEventListener("click", () => { delete draft.look.face; faceImg = null; syncControls(); });
 
     $("name").addEventListener("input", (e) => { draft.name = e.target.value; syncControls(); });
 
@@ -341,6 +364,8 @@
     $("faceThumb").hidden = !draft.look.face;
     if (draft.look.face) $("faceThumb").src = draft.look.face;
     $("faceClear").hidden = !draft.look.face;
+    $("faceAdjust").hidden = !(draft.look.face && faceImg);
+    if (faceImg && faceCrop) { $("faceZoom").value = faceCrop.zoom; $("faceY").value = faceCrop.y; }
     $("faceLabel").textContent = draft.look.face ? "다른 사진으로 바꾸기" : "사진 올리기";
     if (document.activeElement !== $("name")) $("name").value = draft.name;
 
