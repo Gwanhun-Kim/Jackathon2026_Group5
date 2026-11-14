@@ -11,7 +11,8 @@
   html, body { margin: 0; height: 100%; background: #050505; color: #f2f2f2; font-family: system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; overflow: hidden; }
   /* 스크립트가 크기를 정하기 전에도 로딩 문구가 보이게 9:16 기본 크기 */
   #stage { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); overflow: hidden; background: #000; width: min(100vw, calc(100vh * 9 / 16)); height: min(100vh, calc(100vw * 16 / 9)); }
-  #loading { flex-direction: column; gap: 14px; }
+  /* 로딩 중에는 뒤에서 먼저 그려지는 3D 화면(바닥 선 등)을 완전히 가린다 */
+  #loading { flex-direction: column; gap: 14px; background: #000; z-index: 20; }
   #loading .bar { width: 60%; height: 4px; background: rgba(255,255,255,0.12); }
   #loading .bar i { display: block; height: 100%; width: 0; background: var(--neon); transition: width .2s; }
   canvas { display: block; }
