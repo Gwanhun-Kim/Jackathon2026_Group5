@@ -317,10 +317,8 @@
       }
     }
 
-    // opts.props === false 면 소품(방어 실드, 종목 공) 없이 몸통과 얼굴만
-    const props = opts.props !== false;
     // ---- 방어 실드
-    if (props && (s.defense || 0) >= 8) {
+    if ((s.defense || 0) >= 8) {
       const hx = Le.x - 14, hy = shoulderY + 12, hr = 34;
       out.push(`<polygon points="${hexagon(hx, hy, hr)}" fill="#60a5fa" opacity="0.22"/>`);
       out.push(`<polygon points="${hexagon(hx, hy, hr)}" fill="none" stroke="#2563eb" stroke-width="3" opacity="0.75"/>`);
@@ -328,9 +326,9 @@
     }
 
     // ---- 종목 공
-    if (props && look.sport === "soccer") ball("soccer", Lf.x - 26, groundY - 15, 15, out);
-    if (props && look.sport === "basketball") ball("basketball", Lf.x - 26, groundY - 17, 17, out);
-    if (props && look.sport === "volleyball") ball("volleyball", cx + 64, Math.max(30, headCY - headR - 12), 16, out);
+    if (look.sport === "soccer") ball("soccer", Lf.x - 26, groundY - 15, 15, out);
+    if (look.sport === "basketball") ball("basketball", Lf.x - 26, groundY - 17, 17, out);
+    if (look.sport === "volleyball") ball("volleyball", cx + 64, Math.max(30, headCY - headR - 12), 16, out);
 
     out.push(`</svg>`);
     return out.join("");
