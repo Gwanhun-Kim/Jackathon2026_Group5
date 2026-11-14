@@ -1,0 +1,96 @@
+{
+  "description": "스포츠 캐릭터 6명의 게임용 초기 스탯",
+  "scale": {
+    "min": 1,
+    "max": 10
+  },
+  "statDefinitions": {
+    "stamina": "체력: 최대 스태미나와 회복 능력",
+    "power": "파워: 공격 피해량",
+    "attackSpeed": "공격 속도: 공격 준비 및 회복 속도",
+    "toughness": "맷집: 최대 HP와 KO 저항",
+    "moveSpeed": "이동 속도: 접근 및 후퇴 속도",
+    "reach": "사거리: 공격이 닿는 거리",
+    "defense": "방어: 가드 시 피해 경감과 밀림 저항"
+  },
+  "characters": [
+    {
+      "id": "ohtani",
+      "name": "오타니",
+      "stats": {
+        "stamina": 7,
+        "power": 9,
+        "attackSpeed": 5,
+        "toughness": 7,
+        "moveSpeed": 6,
+        "reach": 10,
+        "defense": 5
+      }
+    },
+    {
+      "id": "ngannou",
+      "name": "은가누",
+      "stats": {
+        "stamina": 5,
+        "power": 10,
+        "attackSpeed": 6,
+        "toughness": 10,
+        "moveSpeed": 5,
+        "reach": 5,
+        "defense": 8
+      }
+    },
+    {
+      "id": "son",
+      "name": "손흥민",
+      "stats": {
+        "stamina": 9,
+        "power": 6,
+        "attackSpeed": 9,
+        "toughness": 5,
+        "moveSpeed": 10,
+        "reach": 5,
+        "defense": 5
+      }
+    },
+    {
+      "id": "kim",
+      "name": "김연경",
+      "stats": {
+        "stamina": 8,
+        "power": 7,
+        "attackSpeed": 8,
+        "toughness": 6,
+        "moveSpeed": 6,
+        "reach": 8,
+        "defense": 6
+      }
+    },
+    {
+      "id": "ha",
+      "name": "하승진",
+      "stats": {
+        "stamina": 5,
+        "power": 8,
+        "attackSpeed": 3,
+        "toughness": 9,
+        "moveSpeed": 4,
+        "reach": 10,
+        "defense": 10
+      }
+    },
+    {
+      "id": "park",
+      "name": "박태환",
+      "stats": {
+        "stamina": 10,
+        "power": 6,
+        "attackSpeed": 7,
+        "toughness": 7,
+        "moveSpeed": 7,
+        "reach": 6,
+        "defense": 6
+      }
+    }
+  ]
+}
