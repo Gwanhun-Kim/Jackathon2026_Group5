@@ -25,6 +25,16 @@
         "moveSpeed": 6,
         "reach": 10,
         "defense": 5
+      },
+      "specialAbility": {
+        "id": "windup",
+        "name": "와인드업",
+        "description": "맨손 공격의 준비 시간이 30% 증가하는 대신 피해량이 35% 증가한다.",
+        "trigger": "every_attack",
+        "effects": {
+          "attackStartupMultiplier": 1.3,
+          "damageMultiplier": 1.35
+        }
       }
     },
     {
@@ -38,6 +48,15 @@
         "moveSpeed": 5,
         "reach": 5,
         "defense": 8
+      },
+      "specialAbility": {
+        "id": "guard_break",
+        "name": "가드 파괴",
+        "description": "상대 가드의 피해 경감률을 40% 무시한다. 경감률이 50%라면 30%로 적용한다.",
+        "trigger": "hit_guard",
+        "effects": {
+          "opponentGuardReductionMultiplier": 0.6
+        }
       }
     },
     {
@@ -51,6 +70,21 @@
         "moveSpeed": 10,
         "reach": 5,
         "defense": 5
+      },
+      "specialAbility": {
+        "id": "breakthrough",
+        "name": "돌파 공격",
+        "description": "상대를 향해 0.8초 이상 연속 전진한 직후 시작하는 공격의 피해량이 20% 증가한다. 재사용 대기시간은 4초다.",
+        "trigger": "attack_after_continuous_forward_movement",
+        "conditions": {
+          "minimumForwardMovementSeconds": 0.8,
+          "resetOnMovementInterruption": true
+        },
+        "effects": {
+          "damageMultiplier": 1.2,
+          "affectedAttacks": 1
+        },
+        "cooldownSeconds": 4
       }
     },
     {
@@ -64,6 +98,20 @@
         "moveSpeed": 6,
         "reach": 8,
         "defense": 6
+      },
+      "specialAbility": {
+        "id": "block_counter",
+        "name": "블로킹 후 반격",
+        "description": "가드 성공 후 1초 이내에 시작하는 다음 공격의 준비 시간이 30% 감소한다. 재사용 대기시간은 3초다.",
+        "trigger": "attack_after_successful_guard",
+        "conditions": {
+          "attackStartWindowSeconds": 1
+        },
+        "effects": {
+          "attackStartupMultiplier": 0.7,
+          "affectedAttacks": 1
+        },
+        "cooldownSeconds": 3
       }
     },
     {
@@ -77,6 +125,15 @@
         "moveSpeed": 4,
         "reach": 10,
         "defense": 10
+      },
+      "specialAbility": {
+        "id": "keep_out",
+        "name": "접근 저지",
+        "description": "공격 적중 시 밀어내는 힘이 50% 증가한다.",
+        "trigger": "on_hit",
+        "effects": {
+          "knockbackMultiplier": 1.5
+        }
       }
     },
     {
@@ -90,7 +147,28 @@
         "moveSpeed": 7,
         "reach": 6,
         "defense": 6
+      },
+      "specialAbility": {
+        "id": "pace_control",
+        "name": "페이스 유지",
+        "description": "스태미나가 최대치의 30% 이하가 되면 회복량이 50% 증가하며, 60% 이상으로 회복하면 효과가 종료된다.",
+        "trigger": "stamina_threshold",
+        "conditions": {
+          "activateAtOrBelowStaminaRatio": 0.3,
+          "deactivateAtOrAboveStaminaRatio": 0.6
+        },
+        "effects": {
+          "staminaRegenMultiplier": 1.5
+        }
       }
     }
-  ]
+  ],
+  "combatStyle": "unarmed",
+  "specialAbilityConventions": {
+    "multipliers": "기본값에 곱하는 배율. 1.35는 35% 증가, 0.7은 30% 감소.",
+    "ratios": "0~1 비율. 0.3은 30%.",
+    "timeUnit": "seconds",
+    "cooldownStart": "효과가 적용되는 공격을 시작한 시점",
+    "stacking": "같은 특수 효과는 중첩되지 않음"
+  }
 }
