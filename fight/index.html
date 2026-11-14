@@ -19,6 +19,7 @@
   .hp.right .bar { transform: scaleX(-1); }
   #round { position: absolute; top: 52px; left: 0; right: 0; text-align: center; font-size: 11px; color: #bbb; letter-spacing: 2px; pointer-events: none; }
   #caption { position: absolute; left: 16px; right: 16px; bottom: 90px; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.35; text-shadow: 0 2px 8px #000, 0 0 2px #000; pointer-events: none; transition: opacity 0.3s; }
+  #ability { position: absolute; left: 0; right: 0; top: 96px; text-align: center; font-weight: 900; font-style: italic; font-size: 22px; text-shadow: 0 0 12px rgba(0,0,0,0.9), 0 2px 6px #000; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
   #tag { position: absolute; top: 74px; left: 14px; font-size: 12px; font-weight: 900; color: #000; background: var(--neon); padding: 2px 8px; letter-spacing: 1px; }
   #banner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
   #banner .big { font-size: 64px; font-weight: 900; font-style: italic; color: var(--neon); text-shadow: 0 0 24px var(--neon); animation: pop 0.35s ease-out; }
@@ -33,8 +34,8 @@
   #tape .names div { font-weight: 900; font-size: 19px; line-height: 1.15; }
   #tape .names .r { text-align: right; }
   #tape .names .vs { color: var(--neon); font-style: italic; font-size: 22px; padding: 0 8px; text-shadow: 0 0 10px var(--neon); }
-  #tape .row { display: grid; grid-template-columns: 1fr 74px 1fr; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding: 6px 0; font-size: 14px; font-weight: 800; }
-  #tape .row .k { text-align: center; color: #9aa0a6; font-size: 11px; font-weight: 600; }
+  #tape .row { display: grid; grid-template-columns: 1fr 84px 1fr; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding: 13px 0; font-size: 17px; font-weight: 800; }
+  #tape .row .k { text-align: center; color: #9aa0a6; font-size: 12px; font-weight: 600; }
   #tape .row .r { text-align: right; }
   #tape .row.ko .l, #tape .row.ko .r { color: #ff8a5c; }
   #tape .bar { height: 6px; background: rgba(255,255,255,0.12); position: relative; }
@@ -50,6 +51,7 @@
   <div id="round"></div>
   <div id="tag" hidden>REPLAY</div>
   <div id="caption"></div>
+  <div id="ability"></div>
   <div id="banner"></div>
   <div id="flash"></div>
   <div id="tape" hidden></div>
@@ -110,8 +112,8 @@ const KICKS = ['kick', 'round'];
 
 // 사용자가 고르는 커스텀 값 (나중에 커스텀 화면에서 받아옴)
 const INPUTS = [
-  { name: '야근전사 지호', color: '#ff3b30', stance: 'orthodox', height: 168, build: 'chubby', reach: 0.94, style: 'infighter', special: 'hook', speed: 0.85, power: 1.25, chin: 1.3 },
-  { name: '읽씹의 신', color: '#0a84ff', stance: 'southpaw', height: 188, build: 'slim', reach: 1.12, style: 'outboxer', special: 'jab', speed: 1.2, power: 0.85, chin: 0.8 },
+  { name: '야근전사 지호', color: '#ff3b30', record: '3승 12패', age: 31, weight: 82, stance: 'orthodox', height: 168, build: 'chubby', reach: 0.94, style: 'infighter', special: 'hook', speed: 0.85, power: 1.25, chin: 1.3 },
+  { name: '읽씹의 신', color: '#0a84ff', record: '9승 1패', age: 27, weight: 70, stance: 'southpaw', height: 188, build: 'slim', reach: 1.12, style: 'outboxer', special: 'jab', speed: 1.2, power: 0.85, chin: 0.8 },
 ];
 
 // 체격: 몸 폭 배율
@@ -129,13 +131,78 @@ function buildPlayer(input) {
   const moves = { ...st.moves };
   moves[input.special] = (moves[input.special] || 0) + 3;
   return {
+    defense: 1, stamina: 1, ability: null,
     ...input,
     width: BUILDS[input.build],
     aggr: st.aggr, combo: st.combo, range: st.range, counter: st.counter, moves,
     summary: `${input.height}cm · ${input.stance === 'southpaw' ? '사우스포' : '오소독스'} · ${st.label}`,
   };
 }
-const PLAYERS = INPUTS.map(buildPlayer);
+// ---------- 팀원 데이터 연결 ----------
+// localStorage 의 fightData 를 읽는다. 없으면 위 INPUTS(시험용)를 쓴다
+function loadFightData() {
+  try {
+    const raw = localStorage.getItem('fightData');
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.fighters) || data.fighters.length < 2) return null;
+    return data;
+  } catch (e) {
+    console.warn('fightData 읽기 실패', e);
+    return null;
+  }
+}
+
+// 1~10점을 화면에서 쓰는 배율로 바꾼다 (1점 0.75배 ~ 10점 1.35배)
+function statScale(v) {
+  const n = Math.min(10, Math.max(1, Number(v) || 5));
+  return 0.75 + (n - 1) / 9 * 0.6;
+}
+
+const STYLE_DEFAULT_MOVE = { infighter: 'hook', outboxer: 'jab', counter: 'cross', kickboxer: 'round' };
+
+// 팀원 캐릭터 형식(stats 7개 + specialAbility + appearance) → 화면용 선수 값
+function fromCharacter(c, fallbackColor) {
+  const st = c.stats || {};
+  const ap = c.appearance || {};
+  const style = STYLES[ap.style] ? ap.style : 'infighter';
+  const special = MOVES[ap.signatureMove] ? ap.signatureMove : STYLE_DEFAULT_MOVE[style];
+  const reachPt = Math.min(10, Math.max(1, Number(st.reach) || 5));
+  return {
+    id: c.id,
+    name: c.name || '이름없음',
+    color: ap.color || fallbackColor,
+    face: ap.face || null,
+    stance: ap.stance === 'southpaw' ? 'southpaw' : 'orthodox',
+    height: Number(ap.heightCm) || 175,
+    build: BUILDS[ap.build] ? ap.build : 'normal',
+    reach: 0.9 + (reachPt - 1) / 9 * 0.25,
+    style,
+    special,
+    // 경기 전 비교 화면용 (없으면 '-')
+    record: ap.record || null,
+    age: ap.age || null,
+    weight: ap.weightKg || null,
+    reachCm: ap.reachCm || null,
+    styleLabel: ap.styleLabel || null,
+    power: statScale(st.power),
+    speed: statScale(((Number(st.attackSpeed) || 5) + (Number(st.moveSpeed) || 5)) / 2),
+    chin: statScale(st.toughness),
+    defense: statScale(st.defense),
+    stamina: statScale(st.stamina),
+    ability: c.specialAbility ? { id: c.specialAbility.id, name: c.specialAbility.name } : null,
+  };
+}
+
+const FIGHT_DATA = loadFightData();
+const PLAYERS = (FIGHT_DATA
+  ? FIGHT_DATA.fighters.slice(0, 2).map((c, i) => fromCharacter(c, i === 0 ? '#ff3b30' : '#0a84ff'))
+  : INPUTS
+).map(buildPlayer);
+// ③이 정한 승자 (0 또는 1). 없으면 화면에서 계산한 대로
+const TARGET_WINNER = FIGHT_DATA && FIGHT_DATA.result && (FIGHT_DATA.result.winner === 0 || FIGHT_DATA.result.winner === 1)
+  ? FIGHT_DATA.result.winner
+  : null;
 
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -931,20 +998,46 @@ function simulateFight(A, B) {
     }
     const att = P[atk];
     const def = P[1 - atk];
+    const abl = att.ability ? att.ability.id : null;
+    const defAbl = def.ability ? def.ability.id : null;
+    // 돌파 공격: 거리를 좁히며 시작하는 공격이 가끔 강해짐
+    const breakthrough = abl === 'breakthrough' && !counter && Math.random() < 0.35;
     let len = 1;
     if (Math.random() < att.combo) len++;
     if (Math.random() < 0.3) len++;
     const strikes = [];
     for (let i = 0; i < len; i++) {
       const move = i === 0 && len > 1 && Math.random() < 0.6 ? 'jab' : weightedMove(att.moves);
-      const hitChance = 0.5 + (att.speed - def.speed) * 0.4;
+      // 후반에는 체력(stamina)이 낮은 쪽이 덜 맞힌다
+      const tired = Math.max(0, n - 5) * 0.02 * (1.35 - att.stamina);
+      let hitChance = 0.5 + (att.speed - def.speed) * 0.4 - tired;
+      if (counter && abl === 'block_counter') hitChance += 0.2;
+      if (abl === 'pace_control' && hp[atk] <= 30) hitChance += 0.1;
+      const blockChance = 0.3 + (def.defense - 1) * 0.3;
       const r = Math.random();
       let result = 'slip';
       if (r < hitChance) result = 'hit';
-      else if (r < hitChance + 0.3) result = 'block';
+      else if (r < hitChance + blockChance) result = 'block';
       let dmg = 0;
+      let ability = null;
       if (result === 'hit') dmg = Math.round(MOVES[move].dmg * att.power / def.chin * rand(0.8, 1.25) * 1.15);
       if (result === 'block') dmg = 1;
+      // 특수능력 효과 (비슷하게만 흉내)
+      if (abl === 'windup' && result === 'hit') {
+        dmg = Math.round(dmg * 1.35);
+        ability = 'windup';
+      }
+      if (abl === 'guard_break' && result === 'block') {
+        dmg = 4;
+        ability = 'guard_break';
+      }
+      if (breakthrough && i === 0 && result === 'hit') {
+        dmg = Math.round(dmg * 1.2);
+        ability = 'breakthrough';
+      }
+      if (counter && i === 0 && abl === 'block_counter') ability = 'block_counter';
+      if (abl === 'keep_out' && result === 'hit') ability = 'keep_out';
+      if (abl === 'pace_control' && hp[atk] <= 30 && result === 'hit') ability = 'pace_control';
       const special = result === 'hit' && move === att.special;
       let specialKO = false;
       if (special && Math.random() < specialKoChance(att, def, hp[1 - atk])) {
@@ -953,13 +1046,18 @@ function simulateFight(A, B) {
       }
       hp[1 - atk] -= dmg;
       const ko = hp[1 - atk] <= 0;
-      strikes.push({ move, result, dmg, ko, special, specialKO });
+      strikes.push({ move, result, dmg, ko, special, specialKO, ability });
       if (ko) {
         exchanges.push({ attacker: atk, counter, strikes });
         return { exchanges, winner: atk };
       }
       if (result === 'slip') {
         if (Math.random() < def.counter) forced = 1 - atk;
+        break;
+      }
+      // 블로킹 후 반격: 막자마자 바로 반격
+      if (result === 'block' && defAbl === 'block_counter' && Math.random() < 0.7) {
+        forced = 1 - atk;
         break;
       }
     }
@@ -972,6 +1070,21 @@ function simulateFight(A, B) {
 }
 
 // ---------- 재생 ----------
+// 특수능력 자막: 같은 능력은 4초 안에 다시 띄우지 않는다
+const abilityShownAt = {};
+function abilityCaption(f, id) {
+  if (!f.p.ability || f.p.ability.id !== id) return;
+  const key = f.index + id;
+  if (abilityShownAt[key] && gameTime - abilityShownAt[key] < 4) return;
+  abilityShownAt[key] = gameTime;
+  const el = $('ability');
+  el.textContent = `${f.p.name} · ${f.p.ability.name}!`;
+  el.style.color = f.p.color;
+  el.style.opacity = 1;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = 0; }, 1400);
+}
+
 const LINES = {
   hit: ['{a}의 {m}! 정확히 들어갑니다!', '{m} 적중! {d} 흔들려요!', '{a}, {m}로 꽂아 넣습니다!'],
   block: ['{d} 가드로 막아냅니다', '{a}의 {m}, 가드 위로'],
@@ -1058,13 +1171,14 @@ async function playExchange(ex, replay = false) {
     // 상대는 제자리, 공격하는 쪽만 거리까지 걸어 들어가기 (스텝 동작이 같이 나옴)
     ring.anchor = def.index;
     ring.dTarget = contactDistance(att, def, s.move) + (s.result === 'slip' ? 0.12 : 0);
-    ring.dRate = 3.0;
+    ring.dRate = s.ability === 'breakthrough' ? 6.0 : 3.0;
     for (let k = 0; k < 14 && Math.abs(ring.d - ring.dTarget) > 0.06; k++) await sleep(0.05);
     if (i === 0) await sleep(ex.counter ? 0.03 : 0.1);
 
     const windup = 0.32;
     const from = Math.max(0, info.t - windup);
-    const spd = mv.speed * att.p.speed;
+    // 와인드업: 준비 동작이 느려짐
+    const spd = mv.speed * att.p.speed / (s.ability === 'windup' ? 1.3 : 1);
     playAction(att, mv.clip, { from, speed: spd, fade: 0.1 });
     att.leanVel += 1.2;
     const toImpact = (info.t - from) / spd;
@@ -1074,6 +1188,7 @@ async function playExchange(ex, replay = false) {
       att.assist = { side, at: gameTime + toImpact, def, strength: s.result === 'hit' ? 1 : 0.6 };
     }
 
+    if (s.ability && !replay) abilityCaption(att, s.ability);
     if (s.result === 'slip') {
       await sleep(Math.max(0, toImpact - 0.22));
       slipFx(def);
@@ -1084,10 +1199,23 @@ async function playExchange(ex, replay = false) {
       blockStart(def);
       await sleep(Math.min(0.2, toImpact));
       blockFx(def);
-      if (!replay) caption(line('block', att.p.name, def.p.name, mv.label));
+      // 가드 파괴: 막아도 크게 휘청
+      if (s.ability === 'guard_break') {
+        playAction(def, 'bighit', { from: Math.max(0, hitPeaks.bighit - 0.05), speed: 1.15, fade: 0.06 });
+        sleep(0.7).then(() => toIdle(def, 0.3));
+        def.leanVel -= 4;
+        cam.shake = 0.5;
+        thud(0.7);
+      }
+      if (!replay && s.ability !== 'guard_break') caption(line('block', att.p.name, def.p.name, mv.label));
     } else {
       await sleep(toImpact);
       await impact(att, def, s, replay);
+      // 접근 저지: 더 멀리 밀어냄
+      if (s.ability === 'keep_out') {
+        def.leanVel -= 5;
+        ring.dTarget = ring.d + 0.5;
+      }
       if (!replay && !s.ko) caption(s.special ? `주특기 ${mv.label}! ${att.p.name} 제대로 꽂아 넣습니다!` : line('hit', att.p.name, def.p.name, mv.label));
     }
     if (s.ko) {
@@ -1150,25 +1278,21 @@ async function knockout(loser, winner, replay) {
 
 const BUILD_LABEL = { slim: '마름', normal: '보통', muscle: '근육', chubby: '통통' };
 
+// 경기 전 비교 화면: 전적, 나이, 신장/체중, 리치, 스타일 다섯 줄만
 function tapeHtml(a, b) {
-  // 상대 체력이 30% 남았을 때 기준
-  const koA = Math.round(specialKoChance(a, b, 30) * 100);
-  const koB = Math.round(specialKoChance(b, a, 30) * 100);
-  const row = (l, k, r, cls = '') => `<div class="row ${cls}"><div class="l">${l}</div><div class="k">${k}</div><div class="r">${r}</div></div>`;
-  // 두 선수 값을 가운데서 양쪽으로 뻗는 막대로
-  const bar = (k, va, vb, max) => `<div class="row"><div class="bar"><i style="right:0;width:${Math.min(100, va / max * 100)}%;background:${a.color}"></i></div><div class="k">${k}</div><div class="bar"><i style="left:0;width:${Math.min(100, vb / max * 100)}%;background:${b.color}"></i></div></div>`;
+  const row = (l, k, r) => `<div class="row"><div class="l">${l}</div><div class="k">${k}</div><div class="r">${r}</div></div>`;
+  const record = (p) => p.record || '-';
+  const age = (p) => (p.age ? p.age : '-');
+  const body = (p) => `${p.height}cm / ${p.weight ? p.weight + 'kg' : '-'}`;
+  const reach = (p) => `${p.reachCm || Math.round(p.height * p.reach)}cm`;
+  const style = (p) => p.styleLabel || STYLES[p.style].label;
   return `
     <div class="names"><div style="color:${a.color}">${a.name}</div><div class="vs">VS</div><div class="r" style="color:${b.color}">${b.name}</div></div>
-    ${row(a.height + 'cm', '키', b.height + 'cm')}
-    ${row(Math.round(a.height * a.reach) + 'cm', '리치', Math.round(b.height * b.reach) + 'cm')}
-    ${row(BUILD_LABEL[a.build], '체격', BUILD_LABEL[b.build])}
-    ${row(a.stance === 'southpaw' ? '사우스포' : '오소독스', '스탠스', b.stance === 'southpaw' ? '사우스포' : '오소독스')}
-    ${row(STYLES[a.style].label, '스타일', STYLES[b.style].label)}
-    ${bar('파워', a.power, b.power, 1.5)}
-    ${bar('스피드', a.speed, b.speed, 1.5)}
-    ${bar('맷집', a.chin, b.chin, 1.5)}
-    ${row(MOVES[a.special].label, '주특기', MOVES[b.special].label)}
-    ${row(koA + '%', '한 방 KO<br><span style="font-size:9px">상대 체력 30%</span>', koB + '%', 'ko')}`;
+    ${row(record(a), '전적', record(b))}
+    ${row(age(a), '나이', age(b))}
+    ${row(body(a), '신장 / 체중', body(b))}
+    ${row(reach(a), '리치', reach(b))}
+    ${row(style(a), '스타일', style(b))}`;
 }
 
 let running = false;
@@ -1184,7 +1308,11 @@ async function runFight() {
   ring.omega = 0.3;
   cut('wide');
 
-  const result = simulateFight(PLAYERS[0], PLAYERS[1]);
+  // ③이 정한 승자가 있으면 그 승자가 나올 때까지 다시 계산 (판결 카드와 화면을 맞춤)
+  let result = simulateFight(PLAYERS[0], PLAYERS[1]);
+  for (let tries = 0; TARGET_WINNER !== null && result.winner !== TARGET_WINNER && tries < 200; tries++) {
+    result = simulateFight(PLAYERS[0], PLAYERS[1]);
+  }
 
   // 경기 전 비교 화면 (두 선수 나란히 + 스탯 표)
   ring.d = ring.dTarget = 2.2;
@@ -1288,7 +1416,7 @@ async function start() {
   idleHeadZ = idleProbe.z;
   for (const react of ['hit', 'bighit', 'bodyhit']) hitPeaks[react] = probeHitPeak(base, clips[react]);
   window.setFace = setFace;
-  window.dbg = { cut, cam, ring, fighters, moveInfo, idleHeadZ, hitPeaks };
+  window.dbg = { cut, cam, ring, fighters, moveInfo, idleHeadZ, hitPeaks, PLAYERS, sim: () => simulateFight(PLAYERS[0], PLAYERS[1]) };
 
   fighters.push(makeFighter(base, 0));
   fighters.push(makeFighter(base, 1));
