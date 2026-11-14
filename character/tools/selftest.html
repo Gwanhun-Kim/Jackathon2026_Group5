@@ -2,7 +2,7 @@
 <iframe id="f" src="../index.html" width="1200" height="900"></iframe>
 <script>
 const out=[]; const ok=(c,m)=>out.push((c?"PASS ":"FAIL ")+m);
-document.getElementById("f").onload=async()=>{ await new Promise(r=>setTimeout(r,800));
+document.getElementById("f").onload=async()=>{ try { await new Promise(r=>setTimeout(r,800));
   const w=document.getElementById("f").contentWindow, d=w.document, $=id=>d.getElementById(id);
   try{ w.localStorage.clear(); }catch(e){}
   ok(d.querySelectorAll(".card[data-id]").length===6,"기본 카드 6개");
@@ -42,19 +42,19 @@ document.getElementById("f").onload=async()=>{ await new Promise(r=>setTimeout(r
   const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
   const dt=new w.DataTransfer(); dt.items.add(new w.File([blob],"me.png",{type:"image/png"}));
   $("faceFile").files=dt.files; $("faceFile").dispatchEvent(new Event("change"));
-  await new Promise(r=>setTimeout(r,500));
+  for(let i=0;i<200 && $("faceThumb").hidden;i++) await new Promise(r=>setTimeout(r,100));  // 얼굴 인식 모델 로딩 대기
   ok(!$("faceThumb").hidden && $("previewArt").querySelector("image"),"업로드한 사진이 미리보기 얼굴에 들어감");
   ok($("hair").disabled,"사진 있으면 머리 모양 선택 비활성");
   $("save").click();
   const s2=JSON.parse(w.localStorage.getItem("jeck.customCharacter.v1"));
-  ok(s2.look.face && s2.look.face.startsWith("data:image/jpeg") && s2.appearance.face===s2.look.face,"커스텀 얼굴 저장 + appearance.face ("+Math.round(s2.look.face.length/1024)+"KB)");
+  ok(s2.look.face && /^data:image\/(jpeg|png|webp)/.test(s2.look.face) && s2.appearance.face===s2.look.face,"커스텀 얼굴 저장 + appearance.face ("+Math.round(s2.look.face.length/1024)+"KB)");
   // 사진 들어간 SVG -> PNG 변환 가능 여부 (canvas 오염 안 되는지)
   const svg=w.CharacterArt.render(w.Roster.list()[2]);
   const pngOk=await new Promise(res=>{ const im=new w.Image(); im.onload=()=>{ const c=d.createElement("canvas"); c.width=290; c.height=320; const x=c.getContext("2d"); x.drawImage(im,0,0); try{ c.toDataURL(); const px=x.getImageData(0,0,290,320).data; let photo=0; for(let i=0;i<px.length;i+=4){ if(px[i+3]>0 && Math.abs(px[i]-px[i+1])+Math.abs(px[i+1]-px[i+2])>0) photo++; } res(photo>500);}catch(e){res(false);} }; im.onerror=()=>res(false); im.src=w.URL.createObjectURL(new w.Blob([svg],{type:"image/svg+xml"})); });
   ok(pngOk,"얼굴 사진 포함 PNG 내보내기 가능");
   $("faceClear").click();
   ok($("faceThumb").hidden && !$("previewArt").querySelector("image"),"사진 빼기");
-  ok($("credits").textContent.includes("CC BY"),"사진 출처 표기");
-  document.getElementById("r").textContent=out.join("\n");
+  ok($("credits").textContent.length>10,"사진 안내 문구 표시");
+  document.getElementById("r").textContent=out.join("\n"); } catch(e) { out.push("FAIL 예외: "+e.message); document.getElementById("r").textContent=out.join(String.fromCharCode(10)); }
 };
 </script>

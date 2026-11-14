@@ -26,9 +26,15 @@ example.appearance = { color: "#e11d48", heightCm: 186, build: "muscle", style: 
 // 얼굴 사진: images/faces/{id}.jpg -> SVG 안에 넣을 data URL
 const faceDir = path.join(root, "images", "faces");
 const FACES = {};
+const FACE_FILE = {};
 for (const c of base.characters) {
-  const fp = path.join(faceDir, `${c.id}.jpg`);
-  if (fs.existsSync(fp)) FACES[c.id] = "data:image/jpeg;base64," + fs.readFileSync(fp).toString("base64");
+  for (const [ext, mime] of [["png", "image/png"], ["jpg", "image/jpeg"]]) {
+    const fp = path.join(faceDir, `${c.id}.${ext}`);
+    if (!fs.existsSync(fp)) continue;
+    FACES[c.id] = `data:${mime};base64,` + fs.readFileSync(fp).toString("base64");
+    FACE_FILE[c.id] = `${c.id}.${ext}`;
+    break;
+  }
 }
 const CREDITS = fs.existsSync(path.join(faceDir, "credits.json")) ? JSON.parse(fs.readFileSync(path.join(faceDir, "credits.json"), "utf8")) : { faces: {} };
 
@@ -46,8 +52,8 @@ const out = Object.assign({}, base, {
     const o = Object.assign({}, c, { image: `images/${c.id}.png` });
     if (FACES[c.id]) {
       // JSON에는 base64 대신 파일 경로를 넣는다 (fight/ 기준 경로는 appearance.face)
-      o.look = Object.assign({}, c.look, { face: `images/faces/${c.id}.jpg` });
-      o.appearance = Object.assign({}, c.appearance || {}, { face: `../character/images/faces/${c.id}.jpg` });
+      o.look = Object.assign({}, c.look, { face: `images/faces/${FACE_FILE[c.id]}` });
+      o.appearance = Object.assign({}, c.appearance || {}, { face: `../character/images/faces/${FACE_FILE[c.id]}` });
     }
     return o;
   }),
@@ -73,7 +79,9 @@ fs.writeFileSync(
 // 얼굴 사진을 file:// 에서도 쓰고 PNG로도 내보낼 수 있게 data URL로 저장
 fs.writeFileSync(
   path.join(root, "data", "faces.js"),
-  "// 자동 생성: node tools/export-images.js (원본: images/faces/*.jpg)\n" +
+  "// 자동 생성: node tools/export-images.js (원본: images/faces/*)\n" +
     "window.FACE_DATA = " + JSON.stringify(FACES) + ";\n" +
-    "window.FACE_CREDITS = " + JSON.stringify(CREDITS.faces) + ";\n"
+    "window.FACE_CREDITS = " + JSON.stringify(CREDITS.faces || {}) + ";\n" +
+    "window.FACE_NOTE = " + JSON.stringify(CREDITS.note || "") + ";\n" +
+    "window.FACE_FILES = " + JSON.stringify(FACE_FILE) + ";\n"
 );

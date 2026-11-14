@@ -1,11 +1,4 @@
 {
-  "note": "선수 얼굴 사진은 위키미디어 공용(Wikimedia Commons)의 자유 라이선스 사진을 얼굴 부분만 잘라 256x256으로 줄인 것이다. 라이선스 조건에 따라 출처와 저작자를 표기한다.",
-  "faces": {
-    "ohtani": { "author": "All-Pro Reels", "license": "CC BY-SA 2.0", "source": "https://commons.wikimedia.org/wiki/File:Dodgers_at_Nationals_(53677192000)_(cropped).jpg" },
-    "ngannou": { "author": "Mike Tyson", "license": "CC BY 3.0", "source": "https://commons.wikimedia.org/wiki/File:Francis_Ngannou_2023_(cropped).png" },
-    "son": { "author": "Ujishadow", "license": "CC BY-SA 4.0", "source": "https://commons.wikimedia.org/wiki/File:BFA_2023_-2_Heung-Min_Son_(cropped).jpg" },
-    "kim": { "author": "TV10", "license": "CC BY 4.0", "source": "https://commons.wikimedia.org/wiki/File:Kim_Yeon-koung_in_December_2025.png" },
-    "ha": { "author": "GaleHorn", "license": "CC BY 4.0", "source": "https://commons.wikimedia.org/wiki/File:2010-프로농구-KCC-vs-SK.jpg" },
-    "park": { "author": "JD Lasica", "license": "CC BY 2.0", "source": "https://commons.wikimedia.org/wiki/File:400_meter_freestyle_(6404091897)_Park.jpg" }
-  }
+  "note": "선수 얼굴 사진은 팀이 준비한 시연용 자료이며, 얼굴 인식으로 얼굴 부분만 잘라 사용했습니다. 공개 서비스로 운영할 때는 사진 사용 권한을 확인해야 합니다.",
+  "faces": {}
 }
