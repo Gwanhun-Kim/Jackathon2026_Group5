@@ -1,0 +1,303 @@
+{
+ "wins": [
+  41,
+  59
+ ],
+ "favorite": 1,
+ "exchanges": [
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "hit",
+     "dmg": 5,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "upper",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "cross",
+     "result": "hit",
+     "dmg": 10,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": "breakthrough"
+    },
+    {
+     "move": "body",
+     "result": "hit",
+     "dmg": 8,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "body",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "upper",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "hit",
+     "dmg": 5,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "upper",
+     "result": "hit",
+     "dmg": 12,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "hit",
+     "dmg": 5,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": "breakthrough"
+    },
+    {
+     "move": "hook",
+     "result": "hit",
+     "dmg": 11,
+     "ko": false,
+     "special": true,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "hook",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "hit",
+     "dmg": 5,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": "breakthrough"
+    },
+    {
+     "move": "cross",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 0,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "block",
+     "dmg": 4,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": "guard_break"
+    },
+    {
+     "move": "upper",
+     "result": "block",
+     "dmg": 4,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": "guard_break"
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "upper",
+     "result": "block",
+     "dmg": 1,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    },
+    {
+     "move": "upper",
+     "result": "hit",
+     "dmg": 12,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 0,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "jab",
+     "result": "hit",
+     "dmg": 7,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 0,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "body",
+     "result": "block",
+     "dmg": 4,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": "guard_break"
+    }
+   ]
+  },
+  {
+   "attacker": 0,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "cross",
+     "result": "hit",
+     "dmg": 12,
+     "ko": false,
+     "special": false,
+     "specialKO": false,
+     "ability": null
+    }
+   ]
+  },
+  {
+   "attacker": 1,
+   "counter": false,
+   "strikes": [
+    {
+     "move": "hook",
+     "result": "hit",
+     "dmg": 100,
+     "ko": true,
+     "special": true,
+     "specialKO": true
+    }
+   ]
+  }
+ ],
+ "winner": 1
+}

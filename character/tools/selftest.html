@@ -1,0 +1,60 @@
+<!doctype html><meta charset="utf-8"><body><pre id="r">running</pre>
+<iframe id="f" src="../index.html" width="1200" height="900"></iframe>
+<script>
+const out=[]; const ok=(c,m)=>out.push((c?"PASS ":"FAIL ")+m);
+document.getElementById("f").onload=async()=>{ try { await new Promise(r=>setTimeout(r,800));
+  const w=document.getElementById("f").contentWindow, d=w.document, $=id=>d.getElementById(id);
+  try{ w.localStorage.clear(); }catch(e){}
+  ok(d.querySelectorAll(".card[data-id]").length===6,"기본 카드 6개");
+  ok($("rosterCount").textContent.trim()==="6 / 7","카운트 6/7");
+  ok($("save").disabled,"이름 없으면 저장 비활성");
+  // 예산 초과 막기: 49 모두 배분 상태에서 파워를 10으로 올리려 해도 그대로
+  const before=$("sl_power").value; $("sl_power").value=10; $("sl_power").dispatchEvent(new Event("input"));
+  ok($("sl_power").value===before,"남은 포인트 0이면 올라가지 않음 ("+before+")");
+  // 하나 내리면 1점 남고 저장 비활성
+  d.querySelector('[data-key="defense"] [data-d="-1"]').click();
+  ok(/남은 포인트 1/.test($("points").textContent),"방어 -1 -> 남은 포인트 1");
+  $("name").value="동네 챔피언"; $("name").dispatchEvent(new Event("input"));
+  ok($("save").disabled,"포인트 남으면 저장 비활성");
+  $("sl_power").value=10; $("sl_power").dispatchEvent(new Event("input"));
+  ok($("sl_power").value==String(+before+1),"남은 1점만큼만 증가 -> "+$("sl_power").value);
+  ok(!$("save").disabled,"이름+49점이면 저장 활성");
+  for(let i=0;i<20;i++){ $("random").click(); const s=[...d.querySelectorAll('.slider input')].reduce((a,e)=>a+ +e.value,0); if(s!==49){ok(false,"랜덤 합계 "+s);break;} }
+  ok(true,"랜덤 20회 모두 합계 49");
+  d.querySelectorAll(".chip")[1].click();
+  ok($("hair").value==="cap","야구 선택 -> 머리 모자 자동");
+  $("save").click();
+  ok($("rosterCount").textContent.trim()==="7 / 7","저장 후 7/7");
+  ok(!!d.querySelector('.card[data-id="custom"]'),"커스텀 카드 생성");
+  ok(!$("detail").hidden && $("detailName").textContent==="동네 챔피언","상세 패널 표시");
+  ok(!$("emptySlot"),"빈 슬롯 사라짐");
+  const saved=JSON.parse(w.localStorage.getItem("jeck.customCharacter.v1")||"null");
+  ok(saved && Object.values(saved.stats).reduce((a,b)=>a+b,0)===49,"localStorage 저장 (합 49)");
+  ok(w.Roster.list().length===7,"window.Roster.list() 7명");
+  ok(d.querySelectorAll("#ability option").length===6,"특수 능력 선택지 6개");
+  ok(saved && saved.specialAbility && saved.specialAbility.id,"커스텀에 specialAbility 저장 ("+(saved&&saved.specialAbility&&saved.specialAbility.id)+")");
+  ok(saved && saved.appearance && saved.appearance.heightCm>=165 && ["slim","normal","muscle","chubby"].includes(saved.appearance.build) && ["infighter","outboxer","counter","kickboxer"].includes(saved.appearance.style),"커스텀에 appearance (fight 형식) "+JSON.stringify(saved&&saved.appearance));
+  ok(!$("detailAbility").hidden,"상세에 특수 능력 표시");
+  ok(w.Roster.list()[0].specialAbility,"저장소 characters.json 에서 능력 로드");
+  ok(d.querySelector('.card[data-id="son"] svg image'),"선수 카드에 얼굴 사진");
+  // 얼굴 업로드: 가짜 사진(빨간 배경 400x600)을 파일로 넣기
+  const cv=d.createElement("canvas"); cv.width=400; cv.height=600; const g=cv.getContext("2d"); g.fillStyle="#c00"; g.fillRect(0,0,400,600);
+  const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+  const dt=new w.DataTransfer(); dt.items.add(new w.File([blob],"me.png",{type:"image/png"}));
+  $("faceFile").files=dt.files; $("faceFile").dispatchEvent(new Event("change"));
+  for(let i=0;i<200 && $("faceThumb").hidden;i++) await new Promise(r=>setTimeout(r,100));  // 얼굴 인식 모델 로딩 대기
+  ok(!$("faceThumb").hidden && $("previewArt").querySelector("image"),"업로드한 사진이 미리보기 얼굴에 들어감");
+  ok($("hair").disabled,"사진 있으면 머리 모양 선택 비활성");
+  $("save").click();
+  const s2=JSON.parse(w.localStorage.getItem("jeck.customCharacter.v1"));
+  ok(s2.look.face && /^data:image\/(jpeg|png|webp)/.test(s2.look.face) && s2.appearance.face===s2.look.face,"커스텀 얼굴 저장 + appearance.face ("+Math.round(s2.look.face.length/1024)+"KB)");
+  // 사진 들어간 SVG -> PNG 변환 가능 여부 (canvas 오염 안 되는지)
+  const svg=w.CharacterArt.render(w.Roster.list()[2]);
+  const pngOk=await new Promise(res=>{ const im=new w.Image(); im.onload=()=>{ const c=d.createElement("canvas"); c.width=290; c.height=320; const x=c.getContext("2d"); x.drawImage(im,0,0); try{ c.toDataURL(); const px=x.getImageData(0,0,290,320).data; let photo=0; for(let i=0;i<px.length;i+=4){ if(px[i+3]>0 && Math.abs(px[i]-px[i+1])+Math.abs(px[i+1]-px[i+2])>0) photo++; } res(photo>500);}catch(e){res(false);} }; im.onerror=()=>res(false); im.src=w.URL.createObjectURL(new w.Blob([svg],{type:"image/svg+xml"})); });
+  ok(pngOk,"얼굴 사진 포함 PNG 내보내기 가능");
+  $("faceClear").click();
+  ok($("faceThumb").hidden && !$("previewArt").querySelector("image"),"사진 빼기");
+  ok($("credits").textContent.length>10,"사진 안내 문구 표시");
+  document.getElementById("r").textContent=out.join("\n"); } catch(e) { out.push("FAIL 예외: "+e.message); document.getElementById("r").textContent=out.join(String.fromCharCode(10)); }
+};
+</script>

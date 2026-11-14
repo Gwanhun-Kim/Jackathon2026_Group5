@@ -1,0 +1,1636 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>그래서 누가 이김?</title>
+<style>
+  :root { --neon: #ff5a1f; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: #050505; color: #f2f2f2; font-family: system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; overflow: hidden; }
+  #stage { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); overflow: hidden; background: #000; }
+  canvas { display: block; }
+  #hud { position: absolute; top: 14px; left: 12px; right: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; pointer-events: none; }
+  .hp .name { font-weight: 800; font-size: 13px; letter-spacing: -0.2px; text-shadow: 0 1px 4px #000; }
+  .hp .bar { height: 6px; background: rgba(255,255,255,0.15); margin-top: 4px; overflow: hidden; }
+  .hp .fill { height: 100%; width: 100%; background: #f2f2f2; transition: width 0.25s ease; }
+  .hp.right { text-align: right; }
+  .hp.right .bar { transform: scaleX(-1); }
+  #round { position: absolute; top: 52px; left: 0; right: 0; text-align: center; font-size: 11px; color: #bbb; letter-spacing: 2px; pointer-events: none; }
+  #caption { position: absolute; left: 16px; right: 16px; bottom: 90px; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.35; text-shadow: 0 2px 8px #000, 0 0 2px #000; pointer-events: none; transition: opacity 0.3s; }
+  #ability { position: absolute; left: 0; right: 0; top: 96px; text-align: center; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-shadow: 0 2px 6px #000; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+  #tag { position: absolute; top: 74px; left: 14px; font-size: 12px; font-weight: 900; color: #000; background: var(--neon); padding: 2px 8px; letter-spacing: 1px; }
+  #banner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  #banner .big { font-size: 52px; font-weight: 800; letter-spacing: 8px; color: #f4f4f4; text-shadow: 0 2px 18px rgba(0,0,0,0.85); animation: pop 0.5s ease-out; }
+  #banner .small { font-size: 16px; font-weight: 700; letter-spacing: 2px; margin-top: 8px; color: #cfcfcf; text-shadow: 0 2px 8px #000; }
+  @keyframes pop { from { transform: scale(1.08); opacity: 0; letter-spacing: 14px; } to { transform: scale(1); opacity: 1; } }
+  .btn { position: absolute; left: 16px; right: 16px; bottom: 20px; background: var(--neon); color: #000; border: 0; padding: 14px; font-size: 18px; font-weight: 900; cursor: pointer; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--neon); }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #tape { position: absolute; left: 0; right: 0; bottom: 0; top: 46%; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.85) 12%, rgba(0,0,0,0.92)); padding: 26px 14px 16px; pointer-events: none; animation: tapeIn 0.4s ease-out; }
+  @keyframes tapeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+  #tape .names { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; margin-bottom: 8px; }
+  #tape .names div { font-weight: 900; font-size: 19px; line-height: 1.15; }
+  #tape .names .r { text-align: right; }
+  #tape .names .vs { color: var(--neon); font-style: italic; font-size: 22px; padding: 0 8px; text-shadow: 0 0 10px var(--neon); }
+  #tape .row { display: grid; grid-template-columns: 1fr 84px 1fr; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding: 13px 0; font-size: 17px; font-weight: 800; }
+  #tape .row .k { text-align: center; color: #9aa0a6; font-size: 12px; font-weight: 600; }
+  #tape .row .r { text-align: right; }
+  #tape .row.ko .l, #tape .row.ko .r { color: #ff8a5c; }
+  #tape .bar { height: 6px; background: rgba(255,255,255,0.12); position: relative; }
+  #tape .bar i { position: absolute; top: 0; bottom: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="hud">
+    <div class="hp left"><div class="name" id="n0"></div><div class="bar"><div class="fill" id="b0"></div></div></div>
+    <div class="hp right"><div class="name" id="n1"></div><div class="bar"><div class="fill" id="b1"></div></div></div>
+  </div>
+  <div id="round"></div>
+  <div id="tag" hidden>REPLAY</div>
+  <div id="caption"></div>
+  <div id="ability"></div>
+  <div id="banner"></div>
+  <div id="flash"></div>
+  <div id="tape" hidden></div>
+  <button class="btn" id="startBtn" hidden>경기 시작</button>
+  <div id="loading">파이터 불러오는 중...</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { simulateFight, specialKoChance, toFighter, logicFromCharacter } from '../sim/sim.js';
+
+const FILES = {
+  idle: 'mixamo/idle.fbx',
+  cross: 'mixamo/cross.fbx',
+  hook: 'mixamo/hook.fbx',
+  kick: 'mixamo/kick.fbx',
+  hit: 'mixamo/hit.fbx',
+  ko: 'mixamo/ko.fbx',
+  victory: 'mixamo/victory.fbx',
+  // 추가 동작 (발 스텝, 기술, 방어, 반응)
+  stepF: 'mixamo-extra/stepF.fbx',
+  stepB: 'mixamo-extra/stepB.fbx',
+  strafe: 'mixamo-extra/strafeR.fbx',
+  jab: 'mixamo-extra/jab.fbx',
+  upper: 'mixamo-extra/upper.fbx',
+  body: 'mixamo-extra/body.fbx',
+  round: 'mixamo-extra/round.fbx',
+  block: 'mixamo-extra/block.fbx',
+  dodge: 'mixamo-extra/dodge.fbx',
+  bodyhit: 'mixamo-extra/bodyhit.fbx',
+  bighit: 'mixamo-extra/bighit.fbx',
+};
+
+// 기술: clip = 쓰는 동작, limbs = 닿는 부위, until = 이 시간 안에서만 타격 순간을 찾음,
+// speed = 재생 속도, dmg = 기본 피해, target = 맞는 곳(head/body), heavy = 큰 반응
+const MOVES = {
+  jab:   { label: '잽',     clip: 'jab',   limbs: ['LeftHand'], until: 0.6, speed: 1.15, dmg: 5,  target: 'head' },
+  cross: { label: '크로스',  clip: 'cross', limbs: ['LeftHand', 'RightHand'], speed: 1.05, dmg: 8, target: 'head' },
+  hook:  { label: '훅',     clip: 'hook',  limbs: ['LeftHand', 'RightHand'], speed: 1.0, dmg: 11, target: 'head', heavy: true },
+  upper: { label: '어퍼컷',  clip: 'upper', limbs: ['LeftHand'], speed: 1.0, dmg: 12, target: 'head', heavy: true },
+  body:  { label: '바디샷',  clip: 'body',  limbs: ['LeftHand'], until: 0.6, speed: 1.0, dmg: 7, target: 'body' },
+  kick:  { label: '미들킥',  clip: 'kick',  limbs: ['LeftToeBase', 'RightToeBase'], speed: 1.0, dmg: 14, target: 'body', heavy: true },
+  round: { label: '돌려차기', clip: 'round', limbs: ['RightToeBase'], speed: 1.15, dmg: 15, target: 'head', heavy: true },
+};
+// 다리를 쓰는 기술 (발 고정·주먹 보정을 끈다)
+const KICKS = ['kick', 'round'];
+
+// 사용자가 고르는 커스텀 값 (나중에 커스텀 화면에서 받아옴)
+const INPUTS = [
+  { name: '야근전사 지호', color: '#ff3b30', record: '3승 12패', age: 31, weight: 82, stance: 'orthodox', height: 168, build: 'chubby', reach: 0.94, style: 'infighter', special: 'hook', speed: 0.85, power: 1.25, chin: 1.3 },
+  { name: '읽씹의 신', color: '#0a84ff', record: '9승 1패', age: 27, weight: 70, stance: 'southpaw', height: 188, build: 'slim', reach: 1.12, style: 'outboxer', special: 'jab', speed: 1.2, power: 0.85, chin: 0.8 },
+];
+
+// 체격: 몸 폭 배율
+const BUILDS = { slim: 0.88, normal: 1.0, muscle: 1.12, chubby: 1.2 };
+// 파이팅 스타일: 얼마나 자주 들어가는지, 콤보 길이, 거리, 반격, 기술 비율
+const STYLES = {
+  infighter: { label: '인파이터', aggr: 0.75, combo: 0.7, range: -0.25, counter: 0.3, moves: { jab: 1, cross: 2, hook: 4, upper: 3, body: 3, kick: 0.5, round: 0.3 } },
+  outboxer:  { label: '아웃복서', aggr: 0.45, combo: 0.3, range: 0.45, counter: 0.5, moves: { jab: 5, cross: 3, hook: 1, upper: 0.5, body: 1, kick: 1, round: 1 } },
+  counter:   { label: '카운터',   aggr: 0.3,  combo: 0.4, range: 0.2,  counter: 0.9, moves: { jab: 2, cross: 4, hook: 2, upper: 2, body: 1, kick: 0.5, round: 0.5 } },
+  kickboxer: { label: '킥복서',   aggr: 0.55, combo: 0.5, range: 0.35, counter: 0.4, moves: { jab: 2, cross: 2, hook: 1, upper: 0.5, body: 1, kick: 3, round: 3 } },
+};
+
+function buildPlayer(input) {
+  const st = STYLES[input.style];
+  return {
+    defense: 1, stamina: 1, ability: null,
+    ...input,
+    width: BUILDS[input.build],
+    range: st.range,
+    summary: `${input.height}cm · ${input.stance === 'southpaw' ? '사우스포' : '오소독스'} · ${st.label}`,
+    ...toFighter(input),
+  };
+}
+// ---------- 팀원 데이터 연결 ----------
+// localStorage 의 fightData 를 읽는다. 없으면 위 INPUTS(시험용)를 쓴다
+function loadFightData() {
+  try {
+    const raw = localStorage.getItem('fightData');
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.fighters) || data.fighters.length < 2) return null;
+    return data;
+  } catch (e) {
+    console.warn('fightData 읽기 실패', e);
+    return null;
+  }
+}
+
+// 팀원 캐릭터 형식(stats 7개 + specialAbility + appearance) → 화면용 선수 값
+// 승패 계산에 쓰는 값은 sim/sim.js 의 logicFromCharacter 가 만든다. 여기서는 화면에만 쓰는 값만 붙인다
+function fromCharacter(c, fallbackColor) {
+  const st = c.stats || {};
+  const ap = c.appearance || {};
+  const reachPt = Math.min(10, Math.max(1, Number(st.reach) || 5));
+  return {
+    ...logicFromCharacter(c),
+    id: c.id,
+    name: c.name || '이름없음',
+    color: ap.color || fallbackColor,
+    face: ap.face || null,
+    stance: ap.stance === 'southpaw' ? 'southpaw' : 'orthodox',
+    build: BUILDS[ap.build] ? ap.build : 'normal',
+    reach: 0.9 + (reachPt - 1) / 9 * 0.25,
+    record: ap.record || null,
+    age: ap.age || null,
+    styleLabel: ap.styleLabel || null,
+  };
+}
+
+const FIGHT_DATA = loadFightData();
+const PLAYERS = (FIGHT_DATA
+  ? FIGHT_DATA.fighters.slice(0, 2).map((c, i) => fromCharacter(c, i === 0 ? '#ff3b30' : '#0a84ff'))
+  : INPUTS
+).map(buildPlayer);
+// ③이 정한 승자 (0 또는 1). 없으면 화면에서 계산한 대로
+const TARGET_WINNER = FIGHT_DATA && FIGHT_DATA.result && (FIGHT_DATA.result.winner === 0 || FIGHT_DATA.result.winner === 1)
+  ? FIGHT_DATA.result.winner
+  : null;
+
+const $ = (id) => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// ---------- 화면 (9:16) ----------
+const stage = $('stage');
+let W = 0;
+let H = 0;
+function fitStage() {
+  H = innerHeight;
+  W = Math.round(H * 9 / 16);
+  if (W > innerWidth) {
+    W = innerWidth;
+    H = Math.round(W * 16 / 9);
+  }
+  stage.style.width = W + 'px';
+  stage.style.height = H + 'px';
+}
+fitStage();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+// 영화 같은 색 보정 (밝은 곳은 부드럽게 눌러주고 어두운 곳은 깊게)
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+scene.fog = new THREE.Fog(0x000000, 14, 45);
+
+const camera = new THREE.PerspectiveCamera(28, W / H, 0.1, 200);
+
+// 조명: 주변광은 어둡게, 위에서 내리꽂는 주광 + 뒤에서 윤곽을 따는 테두리 조명 두 개
+// 바닥 쪽 주변광은 주황 그리드 빛이 몸 아래에 비치는 느낌
+scene.add(new THREE.HemisphereLight(0x9aa4b4, 0x3a1206, 0.45));
+const keyLight = new THREE.DirectionalLight(0xfff4e8, 2.4);
+keyLight.position.set(3, 10, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.camera.left = -6;
+keyLight.shadow.camera.right = 6;
+keyLight.shadow.camera.top = 6;
+keyLight.shadow.camera.bottom = -6;
+scene.add(keyLight);
+const rim = new THREE.DirectionalLight(0xff5a1f, 2.6);
+rim.position.set(-4, 3, -6);
+scene.add(rim);
+const rimCool = new THREE.DirectionalLight(0xc8d4ff, 1.4);
+rimCool.position.set(5, 4, -5);
+scene.add(rimCool);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x070707, roughness: 0.75, metalness: 0.05 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+const grid = new THREE.GridHelper(80, 60, 0xff5a1f, 0xff5a1f);
+grid.material.transparent = true;
+grid.material.opacity = 0.42;
+grid.position.y = 0.01;
+scene.add(grid);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.28, 0.4, 0.6);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// 마지막 화면 처리: 가장자리를 어둡게(비네팅) + 아주 약한 필름 입자
+const filmPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float time;
+    varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 p = (vUv - 0.5) * vec2(1.0, 0.85);
+      float vignette = smoothstep(0.78, 0.22, length(p));
+      c.rgb *= mix(0.62, 1.0, vignette);
+      float n = fract(sin(dot(vUv * 731.7 + time, vec2(12.9898, 78.233))) * 43758.5453);
+      c.rgb += (n - 0.5) * 0.03;
+      gl_FragColor = c;
+    }
+  `,
+});
+composer.addPass(filmPass);
+
+// ---------- 게임 시간 (히트스톱·슬로모션이 모든 것에 적용되도록) ----------
+let gameTime = 0;
+let slow = 1;
+let freezeLeft = 0;
+const waiters = [];
+function sleep(sec) {
+  return new Promise((resolve) => waiters.push({ at: gameTime + sec, resolve }));
+}
+const realSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------- 파이터 ----------
+const fighters = [];
+const clips = {};
+const moveInfo = {};
+let idleHeadZ = 0;
+
+function findBone(root, name) {
+  let found = null;
+  root.traverse((o) => {
+    if (!found && o.isBone && o.name === 'mixamorig' + name) found = o;
+  });
+  return found;
+}
+
+// 동작을 미리 돌려보고, 손·발이 가장 앞으로 나간 순간(=타격 순간)과 그 거리를 잰다
+function probeClip(base, clip, limbNames, until = Infinity) {
+  const model = SkeletonUtils.clone(base);
+  const mixer = new THREE.AnimationMixer(model);
+  mixer.clipAction(clip).play();
+  const bones = limbNames.map((n) => findBone(model, n));
+  const v = new THREE.Vector3();
+  let best = { z: -Infinity, t: 0 };
+  const end = Math.min(clip.duration, until);
+  for (let t = 0; t <= end; t += 1 / 60) {
+    mixer.setTime(t);
+    model.updateMatrixWorld(true);
+    for (const b of bones) {
+      b.getWorldPosition(v);
+      if (v.z > best.z) best = { z: v.z, t, limb: b.name.replace('mixamorig', '') };
+    }
+  }
+  return best;
+}
+
+// 피격 동작에서 머리가 가장 빨리 뒤로 젖혀지는 순간
+function probeHitPeak(base, clip) {
+  const model = SkeletonUtils.clone(base);
+  const mixer = new THREE.AnimationMixer(model);
+  mixer.clipAction(clip).play();
+  const head = findBone(model, 'Head');
+  const v = new THREE.Vector3();
+  let prevZ = null;
+  let best = { speed: 0, t: 0 };
+  for (let t = 0; t <= clip.duration; t += 1 / 60) {
+    mixer.setTime(t);
+    model.updateMatrixWorld(true);
+    head.getWorldPosition(v);
+    if (prevZ !== null) {
+      const back = (prevZ - v.z) * 60;
+      if (back > best.speed) best = { speed: back, t };
+    }
+    prevZ = v.z;
+  }
+  return best.t;
+}
+
+// 얼굴 위치 (키 대비 비율) - 머리 크기를 잴 수 없을 때만 쓰는 예비값
+const FACE = { r: 0.064, y: 0.047, z: 0.04, wide: Math.PI * 0.75, tall: Math.PI * 0.7 };
+window.FACE = FACE;
+
+// 마네킹 머리(Head 뼈에 붙은 꼭짓점)의 중심과 반지름을 Head 뼈 기준 좌표로 잰다
+let headShapeCache = null;
+function measureHead(model) {
+  if (headShapeCache) return headShapeCache;
+  const v = new THREE.Vector3();
+  const m = new THREE.Matrix4();
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  let count = 0;
+  const verts = [];
+  model.traverse((obj) => {
+    if (!obj.isSkinnedMesh) return;
+    const bones = obj.skeleton.bones;
+    const hi = bones.findIndex((b) => /Head$/.test(b.name));
+    if (hi < 0) return;
+    m.multiplyMatrices(obj.skeleton.boneInverses[hi], obj.bindMatrix);
+    const pos = obj.geometry.attributes.position;
+    const si = obj.geometry.attributes.skinIndex;
+    const sw = obj.geometry.attributes.skinWeight;
+    for (let i = 0; i < pos.count; i++) {
+      let w = 0;
+      for (let k = 0; k < 4; k++) if (si.getComponent(i, k) === hi) w += sw.getComponent(i, k);
+      if (w < 0.6) continue;
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      min.min(v);
+      max.max(v);
+      verts.push(v.x, v.y, v.z);
+      count++;
+    }
+  });
+  if (count < 30) return null;
+  headShapeCache = { center: min.clone().add(max).multiplyScalar(0.5), radius: max.clone().sub(min).multiplyScalar(0.5), count, verts };
+  return headShapeCache;
+}
+
+// 머리 앞쪽을 덮는 얼굴면: 타원체 조각의 각 점을 실제 머리 표면 바로 바깥으로 밀어 붙인다
+// (머리가 완전한 타원이 아니어서 생기는 이마 깨짐 방지). 두 선수가 같은 몸이라 한 번만 만든다
+const FACE_PATCH = { phiLength: Math.PI * 0.72, thetaStart: Math.PI * 0.16, thetaLength: Math.PI * 0.7, gap: 0.012, cone: 0.985 };
+let faceGeoCache = null;
+function buildFaceGeometry(head) {
+  if (faceGeoCache) return faceGeoCache;
+  const { center, radius, verts } = head;
+  const P = FACE_PATCH;
+  const geo = new THREE.SphereGeometry(1, 56, 40, Math.PI / 2 - P.phiLength / 2, P.phiLength, P.thetaStart, P.thetaLength);
+  const pos = geo.attributes.position;
+  const n = verts.length / 3;
+  const rel = new Float32Array(verts.length);
+  const len = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = verts[i * 3] - center.x, y = verts[i * 3 + 1] - center.y, z = verts[i * 3 + 2] - center.z;
+    const l = Math.hypot(x, y, z) || 1;
+    rel[i * 3] = x / l; rel[i * 3 + 1] = y / l; rel[i * 3 + 2] = z / l;
+    len[i] = l;
+  }
+  const d = new THREE.Vector3();
+  const avg = (radius.x + radius.y + radius.z) / 3;
+  for (let j = 0; j < pos.count; j++) {
+    d.set(pos.getX(j) * radius.x, pos.getY(j) * radius.y, pos.getZ(j) * radius.z);
+    const ell = d.length();
+    d.normalize();
+    // 이 방향 근처(작은 원뿔 안) 머리 꼭짓점 중 가장 바깥 거리
+    let best = 0;
+    for (let i = 0; i < n; i++) {
+      const c = rel[i * 3] * d.x + rel[i * 3 + 1] * d.y + rel[i * 3 + 2] * d.z;
+      if (c > P.cone && len[i] > best) best = len[i];
+    }
+    const r = (best > 0 ? best : ell) + avg * P.gap;
+    pos.setXYZ(j, center.x + d.x * r, center.y + d.y * r, center.z + d.z * r);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  // 정면에서 본 얼굴면의 폭/높이 (사진이 늘어나지 않게 텍스처에 반영)
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  const aspect = (bb.max.x - bb.min.x) / (bb.max.y - bb.min.y);
+  faceGeoCache = { geo, aspect };
+  return faceGeoCache;
+}
+
+// 얼굴 사진 -> 마네킹 머리에 자연스럽게 섞이는 텍스처
+// - 얼굴 타원만 남기고 가장자리를 부드럽게 투명 처리 (사진 배경·테두리 제거)
+// - 채도·밝기를 마네킹 톤에 맞춤 (사진만 붕 뜨거나 블룸으로 빛나지 않게)
+const FACE_TONE = { saturation: 0.88, gain: 1, target: 135, lift: 0.02, zoom: 1.05, shiftUp: 0.02, oval: { cx: 0.5, cy: 0.53, rx: 0.35, ry: 0.47 }, feather: 0.24, glow: 0.38 };
+window.FACE_TONE = FACE_TONE;
+function photoFaceTexture(url, mirror, aspect = 1) {
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  if (mirror) {
+    // 사우스포는 몸을 좌우 반전시키므로 얼굴은 다시 뒤집어 원래대로
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.repeat.x = -1;
+    tex.offset.x = 1;
+  }
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const g = c.getContext('2d', { willReadFrequently: true });
+    // 텍스처는 가로=얼굴면 폭, 세로=얼굴면 높이로 늘어나므로, 사진 세로를 aspect(폭/높이)만큼 줄여 그려 원래 비율 유지
+    const ph = S * Math.min(1, aspect);
+    const top = (S - ph) / 2 - S * FACE_TONE.shiftUp;
+    const k = Math.max(S / img.naturalWidth, S / img.naturalHeight) * FACE_TONE.zoom;
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    g.save();
+    g.translate(0, top);
+    g.scale(1, ph / S);
+    g.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+    g.restore();
+    const d = g.getImageData(0, 0, S, S);
+    const px = d.data;
+    const { saturation, lift, oval, feather } = FACE_TONE;
+    // 자동 노출: 얼굴 타원 안 평균 밝기를 목표값에 맞춤 (어두운 사진·밝은 사진 모두 비슷한 톤으로)
+    let sum = 0, cnt = 0;
+    for (let y = 0; y < S; y += 2) {
+      for (let x = 0; x < S; x += 2) {
+        const nx = (x / S - oval.cx) / (oval.rx * 0.7), ny = ((y - top) / ph - oval.cy) / (oval.ry * 0.7);
+        if (nx * nx + ny * ny > 1) continue;
+        const i = (y * S + x) * 4;
+        if (px[i + 3] < 128) continue;
+        sum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        cnt++;
+      }
+    }
+    const mean = cnt ? sum / cnt : 128;
+    const gain = FACE_TONE.gain * Math.min(1.7, Math.max(0.75, FACE_TONE.target / mean));
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const i = (y * S + x) * 4;
+        const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        for (let ch = 0; ch < 3; ch++) {
+          const v = (lum + (px[i + ch] - lum) * saturation) * gain + lift * 255;
+          px[i + ch] = Math.max(0, Math.min(255, v));
+        }
+        const nx = (x / S - oval.cx) / oval.rx;
+        const ny = ((y - top) / ph - oval.cy) / oval.ry;
+        const r = Math.sqrt(nx * nx + ny * ny);
+        const t = Math.min(1, Math.max(0, (r - (1 - feather)) / feather));
+        px[i + 3] = Math.round(px[i + 3] * (1 - t * t * (3 - 2 * t)));
+      }
+    }
+    g.putImageData(d, 0, 0);
+    tex.needsUpdate = true;
+  };
+  img.onerror = () => console.warn('얼굴 이미지를 불러오지 못함', url);
+  img.src = url;
+  return tex;
+}
+
+// 얼굴 이미지가 없으면 임시 얼굴을 그린다
+function makeFaceTexture(p, aspect) {
+  if (p.face) return photoFaceTexture(p.face, p.stance === 'southpaw', aspect);
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#e9c3a0';
+  g.beginPath();
+  g.arc(128, 128, 124, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = p.color;
+  g.lineWidth = 8;
+  g.stroke();
+  g.fillStyle = '#222';
+  g.beginPath();
+  g.arc(88, 110, 14, 0, Math.PI * 2);
+  g.arc(168, 110, 14, 0, Math.PI * 2);
+  g.fill();
+  g.lineWidth = 10;
+  g.strokeStyle = '#222';
+  g.beginPath();
+  g.moveTo(60, 78); g.lineTo(110, 92);
+  g.moveTo(196, 78); g.lineTo(146, 92);
+  g.stroke();
+  g.beginPath();
+  g.arc(128, 190, 34, Math.PI * 1.1, Math.PI * 1.9);
+  g.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// 이미지 파일을 화면 왼쪽/오른쪽 절반에 끌어다 놓으면 그 선수 얼굴이 바뀐다 (시연용)
+function setFace(index, url) {
+  const tex = photoFaceTexture(url, fighters[index].p.stance === 'southpaw', faceGeoCache ? faceGeoCache.aspect : 1);
+  fighters[index].faceMat.map = tex;
+  fighters[index].faceMat.emissiveMap = tex;
+  fighters[index].faceMat.emissive = new THREE.Color(0xffffff);
+  fighters[index].faceMat.emissiveIntensity = FACE_TONE.glow;
+  fighters[index].faceMat.needsUpdate = true;
+}
+stage.addEventListener('dragover', (e) => e.preventDefault());
+stage.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file || fighters.length < 2) return;
+  const rect = stage.getBoundingClientRect();
+  const index = e.clientX - rect.left < rect.width / 2 ? 0 : 1;
+  setFace(index, URL.createObjectURL(file));
+});
+
+function makeFighter(base, index) {
+  const p = PLAYERS[index];
+  const model = SkeletonUtils.clone(base);
+  const mats = [];
+  model.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.castShadow = true;
+    obj.frustumCulled = false;
+    const list = Array.isArray(obj.material) ? obj.material : [obj.material];
+    const cloned = list.map((m) => {
+      const c = m.clone();
+      // 영상 속 마네킹처럼 짙은 회색 + 약한 광택
+      if (c.color) c.color.set(c.name.toLowerCase().includes('joint') ? 0x1c1c1c : 0x5e5e5e);
+      if (c.shininess !== undefined) c.shininess = 40;
+      if (c.specular) c.specular.set(0x3a3a3a);
+      mats.push(c);
+      return c;
+    });
+    obj.material = Array.isArray(obj.material) ? cloned : cloned[0];
+  });
+
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model, true);
+  const rawHeight = box.max.y - box.min.y;
+  // 키는 전체 크기, 체격은 몸 폭, 사우스포는 좌우 반전
+  const scale = (2.6 / rawHeight) * (p.height / 175);
+  const mirror = p.stance === 'southpaw' ? -1 : 1;
+  model.scale.set(scale * p.width * mirror, scale, scale * p.width);
+
+  const gearMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.4, emissive: p.color, emissiveIntensity: 0.04 });
+  // 트렁크: 허리 띠 + 허벅지 두 개. 허벅지 뼈에 붙여서 다리와 같이 움직인다
+  const shortsMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.55, emissive: p.color, emissiveIntensity: 0.04, side: THREE.DoubleSide });
+  const hips = findBone(model, 'Hips');
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(rawHeight * 0.088, rawHeight * 0.092, rawHeight * 0.075, 20, 1, true), shortsMat);
+  band.position.y = -rawHeight * 0.005;
+  band.castShadow = true;
+  hips.add(band);
+  for (const side of ['Left', 'Right']) {
+    const thigh = findBone(model, side + 'UpLeg');
+    const legPart = new THREE.Mesh(new THREE.CylinderGeometry(rawHeight * 0.06, rawHeight * 0.054, rawHeight * 0.13, 16, 1, true), shortsMat);
+    legPart.position.y = rawHeight * 0.06;
+    legPart.castShadow = true;
+    thigh.add(legPart);
+  }
+  for (const side of ['Left', 'Right']) {
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(rawHeight * 0.042, 16, 12), gearMat);
+    glove.position.y = rawHeight * 0.04;
+    glove.castShadow = true;
+    findBone(model, side + 'Hand').add(glove);
+  }
+
+  // 얼굴: 머리 표면에 딱 붙는 곡면에 사진을 입힌다 (가장자리는 투명하게 섞임)
+  const headShape = measureHead(model);
+  const fitted = headShape ? buildFaceGeometry(headShape) : null;
+  const faceMat = new THREE.MeshStandardMaterial({
+    map: makeFaceTexture(p, fitted ? fitted.aspect : 1), transparent: true, roughness: 0.7, metalness: 0,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  // 어두운 조명·빨간 림라이트에서도 얼굴이 보이게 사진 자체를 은은하게 밝힌다
+  if (p.face) {
+    faceMat.emissiveMap = faceMat.map;
+    faceMat.emissive = new THREE.Color(0xffffff);
+    faceMat.emissiveIntensity = FACE_TONE.glow;
+  }
+  let face;
+  if (fitted) {
+    face = new THREE.Mesh(fitted.geo, faceMat);
+  } else {
+    const faceGeo = new THREE.SphereGeometry(rawHeight * FACE.r, 32, 24, Math.PI / 2 - FACE.wide / 2, FACE.wide, Math.PI / 2 - FACE.tall / 2, FACE.tall);
+    face = new THREE.Mesh(faceGeo, faceMat);
+    face.position.set(0, rawHeight * FACE.y, rawHeight * FACE.z);
+  }
+  face.renderOrder = 2;
+  findBone(model, 'Head').add(face);
+  scene.add(model);
+
+  // 기본 층: 대기 + 발 스텝 동작을 계속 틀어두고, 움직이는 방향에 따라 비중만 바꾼다
+  const mixer = new THREE.AnimationMixer(model);
+  const layer = {};
+  for (const name of ['idle', 'stepF', 'stepB', 'strafe']) {
+    const a = mixer.clipAction(clips[name]);
+    a.setLoop(THREE.LoopRepeat, Infinity);
+    a.time = Math.random() * clips[name].duration;
+    a.setEffectiveWeight(name === 'idle' ? 1 : 0);
+    a.play();
+    layer[name] = a;
+  }
+
+  return {
+    index, p, model, mixer, mats, scale, idle: layer.idle, base: layer, current: null, faceMat,
+    baseW: 1, baseTarget: 1, baseRate: 4,
+    loco: { idle: 1, stepF: 0, stepB: 0, strafe: 0 }, prevPos: null,
+    hp: 100, lean: 0, leanVel: 0,
+    head: findBone(model, 'Head'), spine: findBone(model, 'Spine2'), neck: findBone(model, 'Neck'),
+    snap: { x: 0, z: 0, vx: 0, vz: 0 }, assist: null, feet: null,
+  };
+}
+
+// 동작 층: 기술·방어·반응 같은 한 번짜리 동작. 재생하는 동안 기본 층(대기·스텝)은 줄어든다
+function playAction(f, name, { from = 0, speed = 1, fade = 0.1, once = true } = {}) {
+  const action = f.mixer.clipAction(clips[name]);
+  if (f.current && f.current !== action) f.current.fadeOut(fade);
+  action.reset();
+  action.time = from;
+  action.timeScale = speed;
+  action.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity);
+  action.clampWhenFinished = true;
+  action.setEffectiveWeight(1);
+  action.fadeIn(fade).play();
+  f.current = action;
+  f.baseTarget = 0;
+  f.baseRate = 1 / Math.max(fade, 0.01);
+  return action;
+}
+
+function toIdle(f, fade = 0.25) {
+  if (!f.current) return;
+  f.current.fadeOut(fade);
+  f.current = null;
+  f.baseTarget = 1;
+  f.baseRate = 1 / Math.max(fade, 0.01);
+}
+
+// 발 스텝: 실제로 움직인 속도를 앞뒤/옆으로 나눠서, 그 방향의 스텝 동작 비중을 올린다
+const FULL_STEP_SPEED = 0.9;
+function updateLoco(f, dt) {
+  const change = f.baseTarget - f.baseW;
+  const rate = f.baseRate * dt;
+  f.baseW += Math.abs(change) < rate ? change : Math.sign(change) * rate;
+
+  const pos = f.model.position;
+  if (!f.prevPos) f.prevPos = pos.clone();
+  let vF = 0;
+  let vS = 0;
+  if (dt > 1e-4) {
+    const other = fighters[1 - f.index];
+    const fx = other.model.position.x - pos.x;
+    const fz = other.model.position.z - pos.z;
+    const len = Math.hypot(fx, fz) || 1;
+    const vx = (pos.x - f.prevPos.x) / dt;
+    const vz = (pos.z - f.prevPos.z) / dt;
+    vF = (vx * fx + vz * fz) / len;
+    vS = (vx * -fz + vz * fx) / len;
+  }
+  f.prevPos.copy(pos);
+
+  const target = { idle: 0, stepF: 0, stepB: 0, strafe: 0 };
+  target.stepF = THREE.MathUtils.clamp(vF / FULL_STEP_SPEED, 0, 1);
+  target.stepB = THREE.MathUtils.clamp(-vF / FULL_STEP_SPEED, 0, 1);
+  target.strafe = THREE.MathUtils.clamp(Math.abs(vS) / FULL_STEP_SPEED, 0, 1);
+  const moving = target.stepF + target.stepB + target.strafe;
+  if (moving > 1) {
+    target.stepF /= moving;
+    target.stepB /= moving;
+    target.strafe /= moving;
+  }
+  target.idle = Math.max(0, 1 - moving);
+
+  const k = 1 - Math.exp(-dt * 10);
+  for (const key in f.loco) f.loco[key] += (target[key] - f.loco[key]) * k;
+
+  f.base.stepF.timeScale = THREE.MathUtils.clamp(Math.abs(vF) / FULL_STEP_SPEED, 0.7, 1.6);
+  f.base.stepB.timeScale = THREE.MathUtils.clamp(Math.abs(vF) / FULL_STEP_SPEED, 0.7, 1.6);
+  // 오른쪽 옆걸음 동작을 거꾸로 틀면 왼쪽 옆걸음이 된다
+  const strafeSpeed = THREE.MathUtils.clamp(Math.abs(vS) / FULL_STEP_SPEED, 0.7, 1.6);
+  f.base.strafe.timeScale = vS >= 0 ? strafeSpeed : -strafeSpeed;
+
+  for (const key in f.base) f.base[key].setEffectiveWeight(f.baseW * f.loco[key]);
+}
+
+// ---------- 소리 (파일 없이 합성) ----------
+let actx = null;
+let crowdGain = null;
+function initAudio() {
+  if (actx) {
+    if (actx.state === 'suspended') actx.resume();
+    return;
+  }
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) {
+    return;
+  }
+  // 관중 소리: 낮게 깔리는 웅성거림
+  const len = actx.sampleRate * 2;
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const data = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    last = last * 0.97 + (Math.random() * 2 - 1) * 0.03;
+    data[i] = last * 6;
+  }
+  const src = actx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  const band = actx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 700;
+  band.Q.value = 0.5;
+  crowdGain = actx.createGain();
+  crowdGain.gain.value = 0.05;
+  src.connect(band).connect(crowdGain).connect(actx.destination);
+  src.start();
+}
+addEventListener('pointerdown', initAudio);
+
+function crowdSwell(level, seconds) {
+  if (!actx || !crowdGain) return;
+  const t = actx.currentTime;
+  crowdGain.gain.cancelScheduledValues(t);
+  crowdGain.gain.setValueAtTime(crowdGain.gain.value, t);
+  crowdGain.gain.linearRampToValueAtTime(level, t + 0.15);
+  crowdGain.gain.linearRampToValueAtTime(0.05, t + seconds);
+}
+
+function thud(power) {
+  if (!actx) return;
+  const t = actx.currentTime;
+  const osc = actx.createOscillator();
+  const g = actx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.exponentialRampToValueAtTime(45, t + 0.15);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.8 * power, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  osc.connect(g).connect(actx.destination);
+  osc.start(t);
+  osc.stop(t + 0.22);
+
+  const len = Math.floor(actx.sampleRate * 0.07);
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const noise = actx.createBufferSource();
+  noise.buffer = buf;
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 1500;
+  bp.Q.value = 0.7;
+  const g2 = actx.createGain();
+  g2.gain.value = 0.6 * power;
+  noise.connect(bp).connect(g2).connect(actx.destination);
+  noise.start(t);
+}
+
+// ---------- 링 위 배치: 중심점, 축 각도, 두 선수 사이 거리 ----------
+let tapeMode = false;
+// anchor: 거리를 좁힐 때 제자리에 서 있는 선수 (null이면 둘 다 움직임)
+const ring = { mid: new THREE.Vector3(), theta: 0, omega: 0.25, d: 2.4, dTarget: 2.4, dRate: 2.5, anchor: null };
+
+function axisVec() {
+  return new THREE.Vector3(Math.cos(ring.theta), 0, Math.sin(ring.theta));
+}
+
+function contactDistance(att, def, move) {
+  const info = moveInfo[move];
+  return info.reach * att.scale * (1 + (att.p.reach - 1) * 0.6) + idleHeadZ * def.scale - 0.05;
+}
+
+// 탐색 거리: 두 선수 스타일의 평균 (아웃복서는 멀리, 인파이터는 가까이)
+function neutralDistance() {
+  const range = (fighters[0].p.range + fighters[1].p.range) / 2;
+  return contactDistance(fighters[0], fighters[1], 'cross') + 0.75 + range;
+}
+
+// 리치: 팔 뼈 길이 (글러브 크기는 유지)
+function applyBody(f) {
+  const r = f.p.reach;
+  if (r === 1) return;
+  for (const side of ['Left', 'Right']) {
+    bone(f, side + 'Arm').scale.setScalar(r);
+    bone(f, side + 'Hand').scale.setScalar(1 / r);
+  }
+}
+
+function updateRing(dt) {
+  ring.theta += ring.omega * dt;
+  const diff = ring.dTarget - ring.d;
+  const step = ring.dRate * dt;
+  const dChange = Math.abs(diff) < step ? diff : Math.sign(diff) * step;
+  ring.d += dChange;
+  // 한 선수를 제자리에 두고 다른 선수만 걸어 들어가게 중심점을 옮김
+  if (ring.anchor !== null) {
+    ring.mid.addScaledVector(axisVec(), ring.anchor === 1 ? -dChange / 2 : dChange / 2);
+  }
+  // 중심점은 천천히 원점 근처로
+  ring.mid.multiplyScalar(1 - dt * 0.2);
+
+  const ax = axisVec();
+  const [a, b] = fighters;
+  for (const f of fighters) {
+    // lean: 상대 쪽으로 밀고 들어가거나(+) 밀려나는(-) 양, 스프링으로 0으로 돌아옴
+    f.leanVel += (-f.lean * 30 - f.leanVel * 9) * dt;
+    f.lean += f.leanVel * dt;
+  }
+  // 몸이 겹치지 않게 최소 거리 유지
+  const minGap = 1.0;
+  let la = a.lean;
+  let lb = b.lean;
+  const gap = ring.d - la - lb;
+  if (gap < minGap) {
+    const push = (minGap - gap) / 2;
+    la -= push;
+    lb -= push;
+  }
+  a.model.position.copy(ring.mid).addScaledVector(ax, -ring.d / 2 + la);
+  b.model.position.copy(ring.mid).addScaledVector(ax, ring.d / 2 - lb);
+  for (const f of fighters) {
+    const other = fighters[1 - f.index];
+    const dx = other.model.position.x - f.model.position.x;
+    const dz = other.model.position.z - f.model.position.z;
+    f.model.rotation.y = Math.atan2(dx, dz);
+    // 경기 전 비교 화면에서는 카메라를 본다
+    if (tapeMode) f.model.rotation.y = Math.atan2(camera.position.x - f.model.position.x, camera.position.z - f.model.position.z);
+  }
+}
+
+// 맞았을 때 머리·상체가 꺾이는 효과 (애니메이션 위에 덧씌움)
+const tmpQ = new THREE.Quaternion();
+const tmpE = new THREE.Euler();
+function applySnap(f, dt) {
+  const s = f.snap;
+  s.vx += (-s.x * 120 - s.vx * 14) * dt;
+  s.vz += (-s.z * 120 - s.vz * 14) * dt;
+  s.x += s.vx * dt;
+  s.z += s.vz * dt;
+  tmpQ.setFromEuler(tmpE.set(s.x, 0, s.z));
+  f.head.quaternion.multiply(tmpQ);
+  tmpQ.setFromEuler(tmpE.set(s.x * 0.5, 0, s.z * 0.5));
+  f.spine.quaternion.multiply(tmpQ);
+}
+
+// ---------- IK: 발 고정, 주먹 보정 ----------
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+// ---------- 자연스러움 보정 (애니메이션 위에 덧씌움, 승패와 무관) ----------
+// 머리가 상대 머리를 계속 바라보게: 목 40%, 머리 60%로 나눠 돌리고 최대 35도까지만
+const LOOK_MAX = 0.6;
+const qIdentity = new THREE.Quaternion();
+const lookFwd = new THREE.Vector3();
+const lookDir = new THREE.Vector3();
+const lookQ = new THREE.Quaternion();
+const lookPart = new THREE.Quaternion();
+function applyLookAt(f, dt) {
+  const other = fighters[1 - f.index];
+  let target = 0;
+  if (!tapeMode && f.hp > 0) target = f.current ? 0.5 : 0.85;
+  f.lookW = f.lookW ?? 0;
+  f.lookW += (target - f.lookW) * (1 - Math.exp(-dt * 6));
+  if (f.lookW < 0.01) return;
+
+  f.model.updateMatrixWorld(true);
+  const headPos = localPos(f.head, f.model);
+  const targetPos = f.model.worldToLocal(worldPos(other.head));
+  lookDir.copy(targetPos).sub(headPos).normalize();
+  lookFwd.set(0, 0, 1).applyQuaternion(modelQuat(f.head, f.model)).normalize();
+  lookQ.setFromUnitVectors(lookFwd, lookDir);
+  const angle = 2 * Math.acos(Math.min(1, Math.abs(lookQ.w)));
+  if (angle > LOOK_MAX) lookQ.slerpQuaternions(qIdentity, lookQ.clone(), LOOK_MAX / angle);
+
+  lookPart.slerpQuaternions(qIdentity, lookQ, 0.4 * f.lookW);
+  rotateBoneModel(f.neck, lookPart, f.model);
+  lookPart.slerpQuaternions(qIdentity, lookQ, 0.6 * f.lookW);
+  rotateBoneModel(f.head, lookPart, f.model);
+}
+
+// 지친 자세: 체력이 60 아래로 떨어질수록 상체가 숙여지고 숨이 커지고 대기 동작이 느려진다
+// (상체를 앞으로 숙이는 방향은 피하기 연출과 같은 +X 회전)
+function applyFatigue(f) {
+  if (f.hp <= 0) return;
+  const fatigue = clamp((60 - f.hp) / 60, 0, 1);
+  f.base.idle.timeScale = 1 - 0.3 * fatigue;
+  const breath = Math.sin(gameTime * Math.PI * (1 + fatigue)) * 0.025 * (0.3 + fatigue);
+  const lean = (0.12 * fatigue + breath) * f.baseW;
+  tmpQ.setFromEuler(tmpE.set(lean, 0, 0));
+  f.spine.quaternion.multiply(tmpQ);
+  tmpQ.setFromEuler(tmpE.set(0.06 * fatigue * f.baseW, 0, 0));
+  f.head.quaternion.multiply(tmpQ);
+}
+
+const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+// 발 고정을 켜는 동작 (주먹·피격·막기). 스텝으로 걷는 중이거나 킥·KO 중에는 끈다
+const LEG_CLIPS = ['cross', 'hook', 'hit', 'jab', 'upper', 'body', 'bodyhit', 'bighit', 'block'];
+
+function worldPos(obj) {
+  return obj.getWorldPosition(new THREE.Vector3());
+}
+
+// IK는 모델 기준 좌표에서 계산한다 (좌우 반전·체격 비율이 있어도 깨지지 않게)
+function modelQuat(obj, model) {
+  const q = new THREE.Quaternion();
+  let o = obj;
+  while (o && o !== model) {
+    q.premultiply(o.quaternion);
+    o = o.parent;
+  }
+  return q;
+}
+
+function localPos(obj, model) {
+  return model.worldToLocal(worldPos(obj));
+}
+
+function rotateBoneModel(bone, q, model) {
+  const parentQ = modelQuat(bone.parent, model);
+  const boneQ = modelQuat(bone, model);
+  const newQ = q.clone().multiply(boneQ);
+  bone.quaternion.copy(parentQ.invert().multiply(newQ));
+  bone.updateMatrixWorld(true);
+}
+
+// 두 뼈 IK: upper(어깨/허벅지) - lower(팔꿈치/무릎) - end(손/발). target, poleDir 는 월드 기준
+function solveTwoBone(upper, lower, end, targetWorld, poleWorld, model) {
+  const s0 = localPos(upper, model);
+  const e = localPos(lower, model);
+  const h = localPos(end, model);
+  const target = model.worldToLocal(targetWorld.clone());
+  const base = worldPos(upper);
+  const poleDir = model.worldToLocal(base.clone().add(poleWorld)).sub(model.worldToLocal(base.clone()));
+  const a = s0.distanceTo(e);
+  const b = e.distanceTo(h);
+  const toT = target.clone().sub(s0);
+  const d = clamp(toT.length(), Math.abs(a - b) + 0.01, (a + b) * 0.999);
+  const dir = toT.normalize();
+  const cosA = clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1);
+  const sinA = Math.sqrt(1 - cosA * cosA);
+  const pole = poleDir.clone().sub(dir.clone().multiplyScalar(poleDir.dot(dir)));
+  if (pole.lengthSq() < 1e-9) pole.set(0, -1, 0);
+  pole.normalize();
+  const elbowGoal = s0.clone().add(dir.clone().multiplyScalar(cosA * a)).add(pole.multiplyScalar(sinA * a));
+  const q1 = new THREE.Quaternion().setFromUnitVectors(e.clone().sub(s0).normalize(), elbowGoal.clone().sub(s0).normalize());
+  rotateBoneModel(upper, q1, model);
+  const e2 = localPos(lower, model);
+  const h2 = localPos(end, model);
+  const endGoal = s0.clone().add(dir.clone().multiplyScalar(d));
+  const q2 = new THREE.Quaternion().setFromUnitVectors(h2.clone().sub(e2).normalize(), endGoal.sub(e2).normalize());
+  rotateBoneModel(lower, q2, model);
+}
+
+function bone(f, name) {
+  if (!f.B) f.B = {};
+  if (!f.B[name]) f.B[name] = findBone(f.model, name);
+  return f.B[name];
+}
+
+// 몸통이 서로 파고들지 않게: 두 선수 엉덩이 사이가 너무 가까우면 양쪽으로 살짝 떼어 놓는다
+// (발 고정 IK보다 먼저 해서, 발은 그 자리에 두고 몸만 물러나게 보인다)
+const hipsA = new THREE.Vector3();
+const hipsB = new THREE.Vector3();
+function separateBodies() {
+  const [a, b] = fighters;
+  bone(a, 'Hips').getWorldPosition(hipsA);
+  bone(b, 'Hips').getWorldPosition(hipsB);
+  const dx = hipsB.x - hipsA.x;
+  const dz = hipsB.z - hipsA.z;
+  const dist = Math.hypot(dx, dz);
+  const sizeA = (a.p.height / 175) * a.p.width;
+  const sizeB = (b.p.height / 175) * b.p.width;
+  const minGap = 0.4 * (sizeA + sizeB);
+  if (dist >= minGap || dist < 1e-4) return;
+  const push = (minGap - dist) / 2;
+  const nx = dx / dist;
+  const nz = dz / dist;
+  a.model.position.x -= nx * push;
+  a.model.position.z -= nz * push;
+  b.model.position.x += nx * push;
+  b.model.position.z += nz * push;
+  a.model.updateMatrixWorld(true);
+  b.model.updateMatrixWorld(true);
+}
+
+// 타격 순간 앞뒤로 손을 상대 머리에 끌어당긴다
+function applyPunchAssist(f) {
+  const a = f.assist;
+  if (!a) return;
+  const before = a.at - gameTime;
+  if (before > 0.14 || before < -0.1) {
+    if (before < -0.1) f.assist = null;
+    return;
+  }
+  const w = before >= 0 ? 1 - before / 0.14 : 1 + before / 0.1;
+  const k = easeInOut(clamp(w, 0, 1));
+  const hand = bone(f, a.side + 'Hand');
+  const target = headPos(a.def);
+  // 글러브 반지름만큼 앞에서 멈춤
+  const toMe = worldPos(hand).sub(target).setY(0).normalize();
+  target.addScaledVector(toMe, 0.12).add(new THREE.Vector3(0, -0.05, 0));
+  const goal = worldPos(hand).lerp(target, k * a.strength);
+  const upper = bone(f, a.side + 'Arm');
+  const lower = bone(f, a.side + 'ForeArm');
+  const pole = worldPos(lower).sub(worldPos(upper).lerp(worldPos(hand), 0.5));
+  solveTwoBone(upper, lower, hand, goal, pole, f.model);
+}
+
+// 발 고정: 애니메이션 발이 너무 멀어지면 짧게 한 걸음
+function applyFeet(f, dt) {
+  const locked = f.current ? LEG_CLIPS.includes(f.current.getClip().name) : f.loco.idle > 0.7;
+  if (!locked) {
+    f.feet = null;
+    return;
+  }
+  if (!f.feet) {
+    f.feet = {};
+    for (const side of ['Left', 'Right']) {
+      const p = worldPos(bone(f, side + 'Foot'));
+      f.feet[side] = { planted: new THREE.Vector3(p.x, 0, p.z), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1 };
+    }
+  }
+  for (const side of ['Left', 'Right']) {
+    const ft = f.feet[side];
+    const foot = bone(f, side + 'Foot');
+    const a = worldPos(foot);
+    const other = f.feet[side === 'Left' ? 'Right' : 'Left'];
+    const dx = a.x - ft.planted.x;
+    const dz = a.z - ft.planted.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (ft.t >= 1 && dist > 0.16 && (other.t >= 1 || dist > 0.29)) {
+      ft.from.copy(ft.planted);
+      ft.t = 0;
+    }
+    let lift = 0;
+    if (ft.t < 1) {
+      ft.t = Math.min(1, ft.t + dt / 0.13);
+      const k = easeInOut(ft.t);
+      ft.to.set(a.x, 0, a.z);
+      ft.planted.set(ft.from.x + (ft.to.x - ft.from.x) * k, 0, ft.from.z + (ft.to.z - ft.from.z) * k);
+      lift = Math.sin(ft.t * Math.PI) * 0.07;
+    }
+    // 너무 멀리 남겨지면 끌려온다 (다리가 찢어지지 않게)
+    const off = new THREE.Vector3(ft.planted.x - a.x, 0, ft.planted.z - a.z);
+    if (off.length() > 0.26) {
+      off.setLength(0.26);
+      ft.planted.set(a.x + off.x, 0, a.z + off.z);
+    }
+    const target = new THREE.Vector3(ft.planted.x, a.y + lift, ft.planted.z);
+    const hip = worldPos(bone(f, side + 'UpLeg'));
+    const knee = worldPos(bone(f, side + 'Leg'));
+    const pole = knee.sub(hip.clone().lerp(a, 0.5));
+    solveTwoBone(bone(f, side + 'UpLeg'), bone(f, side + 'Leg'), foot, target, pole, f.model);
+  }
+}
+
+// ---------- 카메라 ----------
+// busy: 공방 중에는 컷을 바꾸지 않는다 (중계처럼 한 앵글로 끝까지 보여줌)
+// push: 큰 타격 때 잠깐 줌인하는 양 (컷을 튀게 바꾸는 대신)
+const cam = { shot: 'side', side: 1, locked: false, busy: false, push: 0, nextCut: 0, pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 28, shake: 0, focus: 0 };
+
+function headPos(f) {
+  const v = new THREE.Vector3();
+  f.head.getWorldPosition(v);
+  return v;
+}
+
+function shotTarget(shot) {
+  const ax = axisVec();
+  const perp = new THREE.Vector3(-ax.z, 0, ax.x).multiplyScalar(cam.side);
+  const [a, b] = fighters;
+  const mid = a.model.position.clone().add(b.model.position).multiplyScalar(0.5);
+  const s = 2.6;
+  if (shot === 'side') {
+    return { pos: mid.clone().addScaledVector(perp, 17).setY(2.3), look: mid.clone().setY(1.55), fov: 26 };
+  }
+  if (shot === 'low') {
+    return { pos: mid.clone().addScaledVector(perp, 8).addScaledVector(ax, cam.side * 1.5).setY(0.45), look: mid.clone().setY(1.9), fov: 34 };
+  }
+  if (shot === 'wide') {
+    return { pos: mid.clone().addScaledVector(perp, 15).addScaledVector(ax, 6).setY(7), look: mid.clone().setY(1.2), fov: 30 };
+  }
+  if (shot === 'ots0' || shot === 'ots1') {
+    const me = fighters[shot === 'ots0' ? 0 : 1];
+    const other = fighters[1 - me.index];
+    const toOther = other.model.position.clone().sub(me.model.position).normalize();
+    const pos = me.model.position.clone().addScaledVector(toOther, -5.5).addScaledVector(perp, 1.9).setY(s * 1.1);
+    return { pos, look: headPos(other).add(new THREE.Vector3(0, -0.5, 0)), fov: 30 };
+  }
+  if (shot === 'close0' || shot === 'close1') {
+    const me = fighters[shot === 'close0' ? 0 : 1];
+    const h = headPos(me);
+    return { pos: h.clone().addScaledVector(perp, 6).add(new THREE.Vector3(0, 0.1, 0)), look: h.clone().add(new THREE.Vector3(0, -0.2, 0)), fov: 20 };
+  }
+  if (shot === 'face0' || shot === 'face1') {
+    const me = fighters[shot === 'face0' ? 0 : 1];
+    const h = headPos(me);
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(me.model.quaternion);
+    const side = new THREE.Vector3(-fwd.z, 0, fwd.x);
+    return { pos: h.clone().addScaledVector(fwd, 3.2).addScaledVector(side, 1.0).add(new THREE.Vector3(0, 0.1, 0)), look: h.clone().add(new THREE.Vector3(0, -0.2, 0)), fov: 22 };
+  }
+  if (shot === 'tape') {
+    return { pos: mid.clone().addScaledVector(perp, 12.5).setY(2.2), look: mid.clone().setY(0.45), fov: 30 };
+  }
+  if (shot === 'orbit') {
+    const w = fighters[cam.focus];
+    const a2 = gameTime * 0.35;
+    const pos = w.model.position.clone().add(new THREE.Vector3(Math.cos(a2) * 6, 1.6, Math.sin(a2) * 6));
+    return { pos, look: w.model.position.clone().setY(1.6), fov: 32 };
+  }
+  return shotTarget('side');
+}
+
+function cut(shot, side) {
+  cam.shot = shot;
+  cam.side = side ?? (Math.random() < 0.5 ? 1 : -1);
+  const t = shotTarget(shot);
+  cam.pos.copy(t.pos);
+  cam.look.copy(t.look);
+  cam.fov = t.fov;
+  cam.nextCut = performance.now() / 1000 + rand(3.5, 6);
+}
+
+// 탐색 중에만 가끔 앵글을 바꾼다. 낮은 앵글은 KO 같은 큰 장면에만 남겨둔다
+function autoCut() {
+  if (cam.locked || cam.busy) return;
+  if (performance.now() / 1000 < cam.nextCut) return;
+  const options = ['side', 'side', 'wide', 'ots0', 'ots1'].filter((s) => s !== cam.shot);
+  cut(pick(options));
+}
+
+function updateCamera(realDt) {
+  const t = shotTarget(cam.shot);
+  const k = 1 - Math.exp(-realDt * 5);
+  cam.pos.lerp(t.pos, k);
+  cam.look.lerp(t.look, k * 1.5 > 1 ? 1 : k * 1.5);
+  cam.fov += (t.fov - cam.fov) * k;
+  const now = performance.now() / 1000;
+  const hand = new THREE.Vector3(Math.sin(now * 0.9) * 0.05 + Math.sin(now * 2.3) * 0.02, Math.sin(now * 1.3 + 1) * 0.04, Math.sin(now * 0.7 + 2) * 0.05);
+  cam.shake = Math.max(0, cam.shake - realDt * 2.5);
+  const sh = cam.shake * cam.shake;
+  camera.position.copy(cam.pos).add(hand).add(new THREE.Vector3((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh));
+  cam.push = Math.max(0, cam.push - realDt * 5);
+  camera.fov = cam.fov - cam.push;
+  filmPass.uniforms.time.value = now % 100;
+  camera.updateProjectionMatrix();
+  camera.lookAt(cam.look);
+}
+
+// ---------- 화면 표시 ----------
+function updateHud() {
+  for (const f of fighters) {
+    $('n' + f.index).textContent = f.p.name;
+    $('b' + f.index).style.width = Math.max(0, f.hp) + '%';
+    $('b' + f.index).style.background = f.p.color;
+  }
+}
+let captionTimer = 0;
+function caption(text) {
+  $('caption').textContent = text;
+  $('caption').style.opacity = 1;
+  clearTimeout(captionTimer);
+  captionTimer = setTimeout(() => { $('caption').style.opacity = 0; }, 2200);
+}
+function banner(big, small = '') {
+  $('banner').innerHTML = big ? `<div class="big">${big}</div><div class="small">${small}</div>` : '';
+}
+function whiteFlash(amount) {
+  const el = $('flash');
+  el.style.transition = 'none';
+  el.style.opacity = amount;
+  requestAnimationFrame(() => {
+    el.style.transition = 'opacity 0.25s';
+    el.style.opacity = 0;
+  });
+}
+
+// ---------- 경기 계산 ----------
+// 결과를 먼저 정하는 계산은 sim/sim.js 의 simulateFight 를 쓴다 (승패에 영향을 주는 수정은 sim/ 에서)
+
+// ---------- 재생 ----------
+// 특수능력 자막: 같은 능력은 4초 안에 다시 띄우지 않는다
+const abilityShownAt = {};
+function abilityCaption(f, id) {
+  if (!f.p.ability || f.p.ability.id !== id) return;
+  const key = f.index + id;
+  if (abilityShownAt[key] && gameTime - abilityShownAt[key] < 4) return;
+  abilityShownAt[key] = gameTime;
+  const el = $('ability');
+  el.textContent = `${f.p.name} · ${f.p.ability.name}`;
+  el.style.color = f.p.color;
+  el.style.opacity = 1;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = 0; }, 1400);
+}
+
+const LINES = {
+  hit: ['{a}의 {m}! 정확히 들어갑니다!', '{m} 적중! {d} 흔들려요!', '{a}, {m}로 꽂아 넣습니다!'],
+  block: ['{d} 가드로 막아냅니다', '{a}의 {m}, 가드 위로'],
+  slip: ['{d} 고개 숙여 피해요!', '{a}의 {m} 허공을 가릅니다'],
+  counter: ['{a}의 카운터!', '피하자마자 {a} 반격!'],
+};
+function line(kind, a, d, m) {
+  return pick(LINES[kind]).replace('{a}', a).replace('{d}', d).replace('{m}', m);
+}
+
+async function impact(att, def, s, replay) {
+  const big = s.dmg >= 12 || s.ko;
+  freezeLeft = s.ko ? 0.18 : big ? 0.1 : 0.06;
+  if (location.hash.includes('freeze') && !KICKS.includes(s.move) && MOVES[s.move].target === 'head') { freezeLeft = 3; cam.locked = true; cut('side'); const sd = att.assist ? att.assist.side : 'Right'; document.title = 'IMPACT ' + s.move + ' dist=' + worldPos(bone(att, sd + 'Hand')).distanceTo(headPos(def)).toFixed(3); setTimeout(() => { cam.locked = false; }, 3000); }
+  cam.shake = s.ko ? 1.0 : big ? 0.6 : 0.35;
+  if (big) whiteFlash(s.ko ? 0.5 : 0.18);
+  for (const m of def.mats) if (m.emissive) m.emissive.setHex(0x661100);
+  setTimeout(() => { for (const m of def.mats) if (m.emissive) m.emissive.setHex(0x000000); }, 90);
+
+  const mv = MOVES[s.move];
+  thud(s.ko ? 1.0 : big ? 0.8 : 0.55);
+  if (big) crowdSwell(s.ko ? 0.45 : 0.22, s.ko ? 3.0 : 1.4);
+
+  // 머리 꺾임은 살짝만 덧씌움 (실제 반응은 피격 동작이 맡음). 맷집이 약하면 더 꺾임
+  const sideDir = Math.random() < 0.5 ? 1 : -1;
+  const soft = 1 / def.p.chin;
+  if (mv.target === 'body') {
+    def.snap.vx += 4 * soft;
+  } else if (s.move === 'hook' || s.move === 'round') {
+    def.snap.vz += sideDir * (big ? 9 : 6) * soft;
+    def.snap.vx -= 2 * soft;
+  } else {
+    def.snap.vx -= (big ? 8 : 6) * soft;
+  }
+  def.leanVel -= (big ? 3 : 2) * soft;
+
+  if (!s.ko) {
+    // 맞은 곳과 세기에 따라 다른 피격 동작
+    let react = 'hit';
+    if (mv.target === 'body') react = 'bodyhit';
+    else if (big || mv.heavy) react = 'bighit';
+    playAction(def, react, { from: Math.max(0, hitPeaks[react] - 0.05), speed: 1.15, fade: 0.06 });
+    sleep(react === 'hit' ? 0.55 : 0.8).then(() => toIdle(def, 0.3));
+  }
+  if (!replay) {
+    def.hp -= s.dmg;
+    updateHud();
+  }
+  // 큰 타격은 컷을 바꾸지 않고 살짝 줌인만
+  if (big) cam.push = Math.max(cam.push, s.ko ? 5 : 3);
+}
+
+// 막기: 공격이 닿기 직전에 가드를 올리는 동작
+function blockStart(def) {
+  playAction(def, 'block', { from: BLOCK_FROM, speed: 1.4, fade: 0.08 });
+  sleep(0.6).then(() => toIdle(def, 0.3));
+}
+function blockFx(def) {
+  def.leanVel -= 1.5;
+  def.snap.vx -= 2;
+  cam.shake = 0.2;
+  thud(0.3);
+}
+
+// 피하기: 공격이 닿기 직전에 상체를 숙여 빠지는 동작
+function slipFx(def) {
+  playAction(def, 'dodge', { from: DODGE_FROM, speed: 1.4, fade: 0.08 });
+  sleep(0.65).then(() => toIdle(def, 0.3));
+}
+
+async function playExchange(ex, replay = false) {
+  const att = fighters[ex.attacker];
+  const def = fighters[1 - ex.attacker];
+  if (!replay && ex.counter) caption(line('counter', att.p.name, def.p.name, ''));
+
+  // 공방 중에는 링을 도는 움직임을 거의 멈춘다 (치면서 미끄러지지 않게)
+  const omegaBefore = ring.omega;
+  ring.omega *= 0.15;
+  // 공방은 읽기 쉬운 앵글로 시작해서 끝날 때까지 컷을 바꾸지 않는다
+  if (!cam.locked && !['side', 'wide', 'ots0', 'ots1'].includes(cam.shot)) cut('side');
+  cam.busy = true;
+
+  for (let i = 0; i < ex.strikes.length; i++) {
+    const s = ex.strikes[i];
+    const mv = MOVES[s.move];
+    const info = moveInfo[s.move];
+
+    // 상대는 제자리, 공격하는 쪽만 거리까지 걸어 들어가기 (스텝 동작이 같이 나옴)
+    ring.anchor = def.index;
+    ring.dTarget = contactDistance(att, def, s.move) + (s.result === 'slip' ? 0.12 : 0);
+    ring.dRate = s.ability === 'breakthrough' ? 6.0 : 3.0;
+    for (let k = 0; k < 14 && Math.abs(ring.d - ring.dTarget) > 0.06; k++) await sleep(0.05);
+    if (i === 0) await sleep(ex.counter ? 0.03 : 0.1);
+
+    const windup = 0.32;
+    const from = Math.max(0, info.t - windup);
+    // 와인드업: 준비 동작이 느려짐
+    const spd = mv.speed * att.p.speed / (s.ability === 'windup' ? 1.3 : 1);
+    playAction(att, mv.clip, { from, speed: spd, fade: 0.1 });
+    att.leanVel += 1.2;
+    const toImpact = (info.t - from) / spd;
+    // 머리를 노리는 주먹은 맞는 순간 손을 얼굴로 끌어당긴다
+    if (!KICKS.includes(s.move) && mv.target === 'head' && s.result !== 'slip') {
+      const side = info.limb.startsWith('Left') ? 'Left' : 'Right';
+      att.assist = { side, at: gameTime + toImpact, def, strength: s.result === 'hit' ? 1 : 0.6 };
+    }
+
+    if (s.ability && !replay) abilityCaption(att, s.ability);
+    if (s.result === 'slip') {
+      await sleep(Math.max(0, toImpact - 0.22));
+      slipFx(def);
+      await sleep(Math.min(0.22, toImpact));
+      if (!replay) caption(line('slip', att.p.name, def.p.name, mv.label));
+    } else if (s.result === 'block') {
+      await sleep(Math.max(0, toImpact - 0.2));
+      blockStart(def);
+      await sleep(Math.min(0.2, toImpact));
+      blockFx(def);
+      // 가드 파괴: 막아도 크게 휘청
+      if (s.ability === 'guard_break') {
+        playAction(def, 'bighit', { from: Math.max(0, hitPeaks.bighit - 0.05), speed: 1.15, fade: 0.06 });
+        sleep(0.7).then(() => toIdle(def, 0.3));
+        def.leanVel -= 4;
+        cam.shake = 0.5;
+        thud(0.7);
+      }
+      if (!replay && s.ability !== 'guard_break') caption(line('block', att.p.name, def.p.name, mv.label));
+    } else {
+      await sleep(toImpact);
+      await impact(att, def, s, replay);
+      // 접근 저지: 더 멀리 밀어냄
+      if (s.ability === 'keep_out') {
+        def.leanVel -= 5;
+        ring.dTarget = ring.d + 0.5;
+      }
+      if (!replay && !s.ko) caption(line('hit', att.p.name, def.p.name, mv.label));
+    }
+    if (s.ko) {
+      ring.anchor = null;
+      cam.busy = false;
+      return true;
+    }
+    await sleep(i < ex.strikes.length - 1 ? 0.12 : 0.35);
+  }
+  ring.anchor = null;
+  ring.omega = omegaBefore;
+  cam.busy = false;
+  toIdle(att, 0.3);
+  return false;
+}
+
+function snapshot() {
+  return {
+    mid: ring.mid.clone(), theta: ring.theta, d: ring.d,
+  };
+}
+function restore(snap) {
+  ring.mid.copy(snap.mid);
+  ring.theta = snap.theta;
+  ring.d = snap.d;
+  ring.dTarget = snap.d;
+  ring.anchor = null;
+  for (const f of fighters) {
+    f.mixer.stopAllAction();
+    for (const key in f.base) {
+      const a = f.base[key];
+      a.reset();
+      a.setLoop(THREE.LoopRepeat, Infinity);
+      a.setEffectiveWeight(key === 'idle' ? 1 : 0);
+      a.play();
+    }
+    f.current = null;
+    f.baseW = 1;
+    f.baseTarget = 1;
+    f.loco = { idle: 1, stepF: 0, stepB: 0, strafe: 0 };
+    f.prevPos = null;
+    f.lean = 0;
+    f.leanVel = 0;
+    f.snap.x = f.snap.z = f.snap.vx = f.snap.vz = 0;
+    f.assist = null;
+    f.feet = null;
+  }
+}
+
+async function knockout(loser, winner, replay) {
+  playAction(loser, 'ko', { from: 0.15, speed: 1.0, fade: 0.08 });
+  if (!replay) crowdSwell(0.5, 3.5);
+  toIdle(winner, 0.4);
+  ring.dRate = 1;
+  ring.dTarget = ring.d + 0.4;
+  cam.locked = true;
+  if (!replay) cut('low');
+  slow = 0.22;
+  await realSleep(1800);
+  slow = 1;
+}
+
+const BUILD_LABEL = { slim: '마름', normal: '보통', muscle: '근육', chubby: '통통' };
+
+// 경기 전 비교 화면: 전적, 나이, 신장/체중, 리치, 스타일 다섯 줄만
+function tapeHtml(a, b) {
+  const row = (l, k, r) => `<div class="row"><div class="l">${l}</div><div class="k">${k}</div><div class="r">${r}</div></div>`;
+  const record = (p) => p.record || '-';
+  const age = (p) => (p.age ? p.age : '-');
+  const body = (p) => `${p.height}cm / ${p.weight ? p.weight + 'kg' : '-'}`;
+  const reach = (p) => `${p.reachCm || Math.round(p.height * p.reach)}cm`;
+  const style = (p) => p.styleLabel || STYLES[p.style].label;
+  return `
+    <div class="names"><div style="color:${a.color}">${a.name}</div><div class="vs">VS</div><div class="r" style="color:${b.color}">${b.name}</div></div>
+    ${row(record(a), '전적', record(b))}
+    ${row(age(a), '나이', age(b))}
+    ${row(body(a), '신장 / 체중', body(b))}
+    ${row(reach(a), '리치', reach(b))}
+    ${row(style(a), '스타일', style(b))}`;
+}
+
+let running = false;
+async function runFight() {
+  running = true;
+  $('startBtn').hidden = true;
+  restore({ mid: new THREE.Vector3(), theta: rand(0, Math.PI * 2), d: neutralDistance() });
+  for (const f of fighters) f.hp = 100;
+  updateHud();
+  banner('');
+  $('tag').hidden = true;
+  cam.locked = false;
+  ring.omega = 0.3;
+  cut('wide');
+
+  // ③이 정한 승자가 있으면 그 승자가 나올 때까지 다시 계산 (판결 카드와 화면을 맞춤)
+  let result = simulateFight(PLAYERS[0], PLAYERS[1]);
+  for (let tries = 0; TARGET_WINNER !== null && result.winner !== TARGET_WINNER && tries < 200; tries++) {
+    result = simulateFight(PLAYERS[0], PLAYERS[1]);
+  }
+
+  // 경기 전 비교 화면 (두 선수 나란히 + 스탯 표)
+  ring.d = ring.dTarget = 2.2;
+  ring.omega = 0;
+  ring.theta = 0;
+  cam.locked = true;
+  tapeMode = true;
+  cut('tape', 1);
+  $('tape').innerHTML = tapeHtml(fighters[0].p, fighters[1].p);
+  $('tape').hidden = false;
+  $('hud').hidden = true;
+  await realSleep(4500);
+  $('tape').hidden = true;
+  $('hud').hidden = false;
+  tapeMode = false;
+
+  // 얼굴 클로즈업
+  ring.d = ring.dTarget = neutralDistance() + 1.6;
+  for (const f of fighters) {
+    cut('face' + f.index);
+    $('banner').innerHTML = `<div class="small" style="margin-top:55vh">${f.p.name}</div>`;
+    await realSleep(800);
+  }
+  banner('');
+  cam.locked = false;
+  cut('side');
+  ring.dTarget = neutralDistance();
+  ring.dRate = 2;
+  ring.omega = 0.3;
+  $('round').textContent = 'ROUND 1';
+  banner('FIGHT!');
+  await sleep(1.0);
+  banner('');
+
+  let last = null;
+  for (const ex of result.exchanges) {
+    // 탐색: 원을 그리며 거리 재기
+    ring.omega = rand(-0.6, 0.6);
+    ring.dRate = 1.6;
+    ring.dTarget = neutralDistance() + rand(-0.15, 0.3);
+    if (!ex.counter) await sleep(rand(0.5, 1.3));
+    last = { ex, snap: snapshot() };
+    const ko = await playExchange(ex);
+    if (ko) break;
+  }
+
+  const winner = fighters[result.winner];
+  const loser = fighters[1 - result.winner];
+  await knockout(loser, winner, false);
+  const finish = last.ex.strikes[last.ex.strikes.length - 1];
+  banner('KO', '');
+  await realSleep(1300);
+  banner('');
+
+  // 리플레이: 마지막 공방을 다른 각도에서 느리게
+  restore(last.snap);
+  $('tag').hidden = false;
+  cam.locked = true;
+  cut('ots' + loser.index, -1);
+  slow = 0.45;
+  await playExchange(last.ex, true);
+  await knockout(loser, winner, true);
+  $('tag').hidden = true;
+  slow = 1;
+  await realSleep(900);
+
+  playAction(winner, 'victory', { fade: 0.4, once: false });
+  cam.focus = winner.index;
+  cut('orbit');
+  banner('WINNER', winner.p.name);
+  caption('');
+  $('startBtn').textContent = '다시 보기';
+  $('startBtn').hidden = false;
+  running = false;
+}
+
+$('startBtn').addEventListener('click', () => { if (!running) runFight(); });
+
+// ---------- 시작 ----------
+const hitPeaks = {};
+// 막기·피하기 동작에서 가드가 올라오기 시작하는 지점 (눈으로 맞춘 값)
+const BLOCK_FROM = 0.55;
+const DODGE_FROM = 0.1;
+async function start() {
+  const loader = new FBXLoader();
+  const loaded = {};
+  for (const [key, url] of Object.entries(FILES)) {
+    $('loading').textContent = `파이터 불러오는 중... (${key})`;
+    loaded[key] = await loader.loadAsync(url);
+    const clip = loaded[key].animations[0];
+    clip.name = key;
+    clips[key] = clip;
+  }
+  const base = loaded.idle;
+  for (const key in MOVES) {
+    const r = probeClip(base, clips[MOVES[key].clip], MOVES[key].limbs, MOVES[key].until);
+    moveInfo[key] = { t: r.t, reach: r.z, limb: r.limb };
+  }
+  // 대기 자세에서 머리가 앞으로 나와 있는 정도
+  const idleProbe = probeClip(base, clips.idle, ['Head']);
+  idleHeadZ = idleProbe.z;
+  for (const react of ['hit', 'bighit', 'bodyhit']) hitPeaks[react] = probeHitPeak(base, clips[react]);
+  window.setFace = setFace;
+  window.dbg = { cut, cam, ring, fighters, measureHead, camera, moveInfo, idleHeadZ, hitPeaks, PLAYERS, sim: () => simulateFight(PLAYERS[0], PLAYERS[1]) };
+
+  fighters.push(makeFighter(base, 0));
+  fighters.push(makeFighter(base, 1));
+  ring.d = ring.dTarget = neutralDistance();
+  updateHud();
+  cut('wide');
+  $('loading').remove();
+  $('startBtn').hidden = false;
+  if (new URLSearchParams(location.search).has('auto')) runFight();
+}
+start().catch((err) => {
+  $('loading').textContent = '로딩 실패: ' + err.message;
+  console.error(err);
+});
+
+const clock = new THREE.Clock();
+function loop() {
+  requestAnimationFrame(loop);
+  const realDt = Math.min(clock.getDelta(), 0.05);
+  let scale = slow;
+  if (freezeLeft > 0) {
+    freezeLeft -= realDt;
+    scale = 0.02;
+  }
+  const dt = realDt * scale;
+  gameTime += dt;
+  for (let i = waiters.length - 1; i >= 0; i--) {
+    if (waiters[i].at <= gameTime) {
+      waiters[i].resolve();
+      waiters.splice(i, 1);
+    }
+  }
+  if (fighters.length === 2) {
+    updateRing(dt);
+    for (const f of fighters) {
+      updateLoco(f, dt);
+      f.mixer.update(dt);
+      applyBody(f);
+      applyLookAt(f, dt);
+      applyFatigue(f);
+      applySnap(f, dt);
+      f.model.updateMatrixWorld(true);
+    }
+    if (!tapeMode) separateBodies();
+    for (const f of fighters) applyPunchAssist(f);
+    for (const f of fighters) applyFeet(f, dt);
+    autoCut();
+    updateCamera(realDt);
+  }
+  composer.render();
+}
+loop();
+
+addEventListener('resize', () => {
+  fitStage();
+  renderer.setSize(W, H);
+  composer.setSize(W, H);
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>

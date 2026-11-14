@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>캐릭터 로스터</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">그래서 누가 이김? · ② 캐릭터 만들기</p>
+    <h1>캐릭터 로스터</h1>
+    <p class="sub">선수 6명 + 내가 만든 캐릭터 1명. 모두 같은 <b id="budgetText">49</b>점을 7개 스탯에 나눠 가진다.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <div class="section-head">
+      <h2>로스터 <span class="count" id="rosterCount">6 / 7</span></h2>
+      <div class="actions">
+        <button class="btn ghost" id="exportJson" type="button">7명 JSON 받기</button>
+        <button class="btn ghost" id="exportAllPng" type="button">전체 이미지 받기</button>
+      </div>
+    </div>
+    <div class="roster" id="roster"></div>
+  </section>
+
+  <section class="detail" id="detail" hidden>
+    <div class="detail-art" id="detailArt"></div>
+    <div class="detail-body">
+      <p class="eyebrow" id="detailSport"></p>
+      <h2 id="detailName"></h2>
+      <p class="title-badge" id="detailTitle"></p>
+      <div class="detail-grid">
+        <div class="radar-box" id="detailRadar"></div>
+        <ul class="stat-list" id="detailStats"></ul>
+      </div>
+      <p class="ability" id="detailAbility" hidden></p>
+      <div class="actions">
+        <button class="btn" id="detailPng" type="button">이미지(PNG) 받기</button>
+        <button class="btn ghost" id="detailEdit" type="button" hidden>편집하기</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="builder" id="builder">
+    <div class="section-head">
+      <h2>나만의 캐릭터 만들기</h2>
+      <span class="points" id="points">남은 포인트 0</span>
+    </div>
+    <div class="builder-grid">
+      <div class="preview">
+        <div class="preview-art" id="previewArt"></div>
+        <p class="title-badge" id="previewTitle"></p>
+        <div class="radar-box" id="previewRadar"></div>
+        <p class="similar" id="similar"></p>
+      </div>
+      <div class="controls">
+        <label class="field">
+          <span>이름</span>
+          <input id="name" type="text" maxlength="10" placeholder="예: 동네 챔피언" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>어떤 선수에서 시작할까?</span>
+          <select id="template"></select>
+        </label>
+        <div class="field">
+          <span>종목 스타일</span>
+          <div class="chips" id="sports"></div>
+        </div>
+        <div class="field">
+          <span>얼굴 사진 (선택)</span>
+          <div class="face-row">
+            <img id="faceThumb" class="face-thumb" alt="올린 얼굴 사진" hidden>
+            <label class="btn ghost file-btn"><input id="faceFile" type="file" accept="image/*"><span id="faceLabel">사진 올리기</span></label>
+            <button class="btn ghost" id="faceClear" type="button" hidden>사진 빼기</button>
+          </div>
+          <div class="face-adjust" id="faceAdjust" hidden>
+            <label>얼굴 확대 <input id="faceZoom" type="range" min="0.6" max="1.8" step="0.02"></label>
+            <label>위아래 <input id="faceY" type="range" min="-0.25" max="0.25" step="0.01"></label>
+          </div>
+          <small class="ability-desc">얼굴을 자동으로 찾아 반듯하게 맞춰 넣어요. 어긋나면 슬라이더로 조절하세요. 사진은 이 브라우저에만 저장돼요.</small>
+        </div>
+        <div class="field two">
+          <div>
+            <span>유니폼 색</span>
+            <div class="swatches" id="colors"></div>
+          </div>
+          <label>
+            <span>머리</span>
+            <select id="hair"></select>
+          </label>
+        </div>
+        <label class="field" id="abilityField">
+          <span>특수 능력 (선수 6명의 능력 중 하나)</span>
+          <select id="ability"></select>
+          <small class="ability-desc" id="abilityDesc"></small>
+        </label>
+        <div class="sliders" id="sliders"></div>
+        <p class="hint" id="hint"></p>
+        <div class="actions">
+          <button class="btn ghost" id="random" type="button">랜덤</button>
+          <button class="btn ghost" id="reset" type="button">초기화</button>
+          <button class="btn primary" id="save" type="button">로스터에 저장</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="wrap credits" id="credits"></footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="data/characters.js"></script>
+<script src="data/faces.js"></script>
+<script src="art.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
