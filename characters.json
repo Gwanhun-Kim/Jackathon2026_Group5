@@ -31,10 +31,21 @@
         "name": "와인드업",
         "description": "맨손 공격의 준비 시간이 30% 증가하는 대신 피해량이 35% 증가한다.",
         "trigger": "every_attack",
-        "effects": {
-          "attackStartupMultiplier": 1.3,
-          "damageMultiplier": 1.35
-        }
+        "conditions": {},
+        "effects": [
+          {
+            "stat": "attackStartup",
+            "operation": "multiply",
+            "value": 1.3
+          },
+          {
+            "stat": "damage",
+            "operation": "multiply",
+            "value": 1.35
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
       }
     },
     {
@@ -54,9 +65,16 @@
         "name": "가드 파괴",
         "description": "상대 가드의 피해 경감률을 40% 무시한다. 경감률이 50%라면 30%로 적용한다.",
         "trigger": "hit_guard",
-        "effects": {
-          "opponentGuardReductionMultiplier": 0.6
-        }
+        "conditions": {},
+        "effects": [
+          {
+            "stat": "opponentGuardReduction",
+            "operation": "multiply",
+            "value": 0.6
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
       }
     },
     {
@@ -80,10 +98,14 @@
           "minimumForwardMovementSeconds": 0.8,
           "resetOnMovementInterruption": true
         },
-        "effects": {
-          "damageMultiplier": 1.2,
-          "affectedAttacks": 1
-        },
+        "effects": [
+          {
+            "stat": "damage",
+            "operation": "multiply",
+            "value": 1.2
+          }
+        ],
+        "affectedAttacks": 1,
         "cooldownSeconds": 4
       }
     },
@@ -107,10 +129,14 @@
         "conditions": {
           "attackStartWindowSeconds": 1
         },
-        "effects": {
-          "attackStartupMultiplier": 0.7,
-          "affectedAttacks": 1
-        },
+        "effects": [
+          {
+            "stat": "attackStartup",
+            "operation": "multiply",
+            "value": 0.7
+          }
+        ],
+        "affectedAttacks": 1,
         "cooldownSeconds": 3
       }
     },
@@ -131,9 +157,16 @@
         "name": "접근 저지",
         "description": "공격 적중 시 밀어내는 힘이 50% 증가한다.",
         "trigger": "on_hit",
-        "effects": {
-          "knockbackMultiplier": 1.5
-        }
+        "conditions": {},
+        "effects": [
+          {
+            "stat": "knockback",
+            "operation": "multiply",
+            "value": 1.5
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
       }
     },
     {
@@ -157,9 +190,15 @@
           "activateAtOrBelowStaminaRatio": 0.3,
           "deactivateAtOrAboveStaminaRatio": 0.6
         },
-        "effects": {
-          "staminaRegenMultiplier": 1.5
-        }
+        "effects": [
+          {
+            "stat": "staminaRegen",
+            "operation": "multiply",
+            "value": 1.5
+          }
+        ],
+        "affectedAttacks": null,
+        "cooldownSeconds": 0
       }
     }
   ],
@@ -169,6 +208,17 @@
     "ratios": "0~1 비율. 0.3은 30%.",
     "timeUnit": "seconds",
     "cooldownStart": "효과가 적용되는 공격을 시작한 시점",
-    "stacking": "같은 특수 효과는 중첩되지 않음"
+    "stacking": "같은 특수 효과는 중첩되지 않음",
+    "conditions": "조건이 없으면 빈 객체. 세부 조건은 trigger별로 해석한다.",
+    "effects": "stat에 지정된 값에 operation을 적용한다. multiply는 기존 값에 value를 곱한다.",
+    "affectedAttacks": "1은 발동 후 해당 공격 한 번에 적용. null은 공격 횟수 제한 없이 trigger와 conditions가 적용 범위를 결정한다.",
+    "cooldownSeconds": "0은 재사용 대기시간 없음.",
+    "effectStatDefinitions": {
+      "attackStartup": "자신의 공격 준비 시간",
+      "damage": "자신의 공격 피해량",
+      "opponentGuardReduction": "상대의 가드 피해 경감률",
+      "knockback": "자신의 공격이 상대를 밀어내는 힘",
+      "staminaRegen": "자신의 스태미나 회복량"
+    }
   }
 }
