@@ -98,6 +98,7 @@ const FILES = {
   dodge: 'mixamo-extra/dodge.fbx',
   bodyhit: 'mixamo-extra/bodyhit.fbx',
   bighit: 'mixamo-extra/bighit.fbx',
+  down: 'mixamo-extra/down.fbx',
 };
 
 // 기술: clip = 쓰는 동작, limbs = 닿는 부위, until = 이 시간 안에서만 타격 순간을 찾음,
@@ -208,9 +209,11 @@ function fitStage() {
 fitStage();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// 폰에서는 해상도 배율을 1.5로 낮추고 그림자를 꺼서 가볍게 돌린다
+const IS_MOBILE = matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+renderer.setPixelRatio(Math.min(devicePixelRatio, IS_MOBILE ? 1.5 : 2));
 renderer.setSize(W, H);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !IS_MOBILE;
 // 영화 같은 색 보정 (밝은 곳은 부드럽게 눌러주고 어두운 곳은 깊게)
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
@@ -1140,6 +1143,13 @@ function shotTarget(shot) {
     const side = new THREE.Vector3(-fwd.z, 0, fwd.x);
     return { pos: h.clone().addScaledVector(fwd, 3.2).addScaledVector(side, 1.0).add(new THREE.Vector3(0, 0.1, 0)), look: h.clone().add(new THREE.Vector3(0, -0.2, 0)), fov: 22 };
   }
+  // KO 장면: 쓰러지는 선수를 화면 가운데에 두고 낮은 각도에서 본다
+  if (shot === 'koLow') {
+    const l = fighters[cam.focus];
+    // 쓰러지는 동작은 몸이 제자리에서 벗어나므로 엉덩이 위치를 따라간다
+    const p = worldPos(bone(l, 'Hips')).setY(0);
+    return { pos: p.clone().addScaledVector(perp, 7).addScaledVector(ax, -cam.side * 1.2).setY(0.6), look: p.clone().setY(0.7), fov: 30 };
+  }
   if (shot === 'tape') {
     return { pos: mid.clone().addScaledVector(perp, 12.5).setY(2.2), look: mid.clone().setY(0.45), fov: 30 };
   }
@@ -1419,14 +1429,20 @@ function restore(snap) {
   }
 }
 
-async function knockout(loser, winner, replay) {
-  playAction(loser, 'ko', { from: 0.15, speed: 1.0, fade: 0.08 });
+// 훅·킥·바디로 끝나면 앞으로 엎어지고, 스트레이트·어퍼컷으로 끝나면 뒤로 넘어간다
+const FORWARD_KO = ['hook', 'round', 'kick', 'body'];
+async function knockout(loser, winner, replay, move) {
+  const koClip = FORWARD_KO.includes(move) ? 'down' : 'ko';
+  // 두 동작 모두 앞부분은 서서 휘청이는 구간이라, 실제로 쓰러지기 직전부터 틀어야 KO 순간에 바로 쓰러진다
+  // (엉덩이 높이 측정: ko는 1.8초, down은 0.4초부터 떨어지기 시작)
+  playAction(loser, koClip, { from: koClip === 'down' ? 0.35 : 1.55, speed: 1.0, fade: 0.08 });
   if (!replay) crowdSwell(0.5, 3.5);
   toIdle(winner, 0.4);
   ring.dRate = 1;
   ring.dTarget = ring.d + 0.4;
   cam.locked = true;
-  if (!replay) cut('low');
+  cam.focus = loser.index;
+  if (!replay) cut('koLow');
   slow = 0.22;
   await realSleep(1800);
   slow = 1;
@@ -1521,8 +1537,8 @@ async function runFight() {
 
   const winner = fighters[result.winner];
   const loser = fighters[1 - result.winner];
-  await knockout(loser, winner, false);
   const finish = last.ex.strikes[last.ex.strikes.length - 1];
+  await knockout(loser, winner, false, finish.move);
   banner('KO', '');
   await realSleep(1300);
   banner('');
@@ -1534,7 +1550,7 @@ async function runFight() {
   cut('ots' + loser.index, -1);
   slow = 0.45;
   await playExchange(last.ex, true);
-  await knockout(loser, winner, true);
+  await knockout(loser, winner, true, finish.move);
   $('tag').hidden = true;
   slow = 1;
   await realSleep(900);
