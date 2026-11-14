@@ -46,6 +46,17 @@
         ],
         "affectedAttacks": null,
         "cooldownSeconds": 0
+      },
+      "physicalStats": {
+        "heightCm": 193,
+        "weightKg": 95.3
+      },
+      "physicalStatsSource": {
+        "title": "MLB 선수 프로필",
+        "url": "https://www.mlb.com/player/shohei-ohtani-660271",
+        "accessedOn": "2026-11-14",
+        "originalMeasurements": "6 ft 4 in / 210 lb",
+        "note": "공개 프로필 등록값; 측정 시점 미표기."
       }
     },
     {
@@ -75,6 +86,17 @@
         ],
         "affectedAttacks": null,
         "cooldownSeconds": 0
+      },
+      "physicalStats": {
+        "heightCm": 193,
+        "weightKg": 116.6
+      },
+      "physicalStatsSource": {
+        "title": "PFL 선수 프로필",
+        "url": "https://pflmma.com/superfights-fighter/francis-ngannou",
+        "accessedOn": "2026-11-14",
+        "originalMeasurements": "6 ft 4 in / 257 lb",
+        "note": "선수 상세 WEIGHT 값 사용; Heavyweight (265)는 체급 상한이므로 사용하지 않음. 측정 시점 미표기."
       }
     },
     {
@@ -107,6 +129,17 @@
         ],
         "affectedAttacks": 1,
         "cooldownSeconds": 4
+      },
+      "physicalStats": {
+        "heightCm": 183,
+        "weightKg": 78
+      },
+      "physicalStatsSource": {
+        "title": "대한축구협회 국가대표 프로필",
+        "url": "https://www.kfa.or.kr/national/?act=nt_man&position=FW&s_idx=7608&search_val=2026",
+        "accessedOn": "2026-11-14",
+        "originalMeasurements": "183 cm / 78 kg",
+        "note": "국가대표 공개 등록값; 현재 실측값과 다를 수 있음."
       }
     },
     {
@@ -138,6 +171,17 @@
         ],
         "affectedAttacks": 1,
         "cooldownSeconds": 3
+      },
+      "physicalStats": {
+        "heightCm": 192,
+        "weightKg": 73
+      },
+      "physicalStatsSource": {
+        "title": "FIVB VNL 2021 선수 명단",
+        "url": "https://www.federvolley.it/sites/default/files/news/allegati/VNL%202021%20Bubble%20-%20Rimini%20-%20Bulletin%201.pdf",
+        "accessedOn": "2026-11-14",
+        "originalMeasurements": "192 cm / 73 kg",
+        "note": "2021 VNL 등록값. 검색 색인에 남아 있는 명단으로 확인; 원본 PDF 직접 열기는 404 응답."
       }
     },
     {
@@ -167,6 +211,17 @@
         ],
         "affectedAttacks": null,
         "cooldownSeconds": 0
+      },
+      "physicalStats": {
+        "heightCm": 221,
+        "weightKg": 138.3
+      },
+      "physicalStatsSource": {
+        "title": "Basketball Reference 선수 프로필",
+        "url": "https://www.basketball-reference.com/players/s/seungha01.html",
+        "accessedOn": "2026-11-14",
+        "originalMeasurements": "7 ft 3 in / 305 lb",
+        "note": "NBA 선수 시절 등록값. 검색 색인으로 확인; 원문 직접 열기는 403 응답."
       }
     },
     {
@@ -199,6 +254,17 @@
         ],
         "affectedAttacks": null,
         "cooldownSeconds": 0
+      },
+      "physicalStats": {
+        "heightCm": 183,
+        "weightKg": 73
+      },
+      "physicalStatsSource": {
+        "title": "Olympedia 선수 프로필",
+        "url": "https://www.olympedia.org/athletes/103187",
+        "accessedOn": "2026-11-14",
+        "originalMeasurements": "183 cm / 73 kg",
+        "note": "올림픽 선수 기록의 Measurements 값; 측정 시점 미표기. 현재 체중을 의미하지 않음."
       }
     }
   ],
@@ -220,5 +286,12 @@
       "knockback": "자신의 공격이 상대를 밀어내는 힘",
       "staminaRegen": "자신의 스태미나 회복량"
     }
+  },
+  "physicalStatsConventions": {
+    "heightCm": "공개 프로필의 키(cm). 피트/인치 표기는 cm로 환산 후 정수로 반올림.",
+    "weightKg": "공개 프로필의 몸무게(kg). lb 표기는 1 lb = 0.45359237 kg으로 환산 후 소수점 첫째 자리로 반올림.",
+    "scale": "physicalStats는 실제 단위 수치이며 최상위 scale(1~10)은 기존 stats에만 적용한다.",
+    "provenance": "선수별 physicalStatsSource에 출처, 원문 수치, 확인 날짜와 기준을 기록한다. accessedOn은 측정 날짜가 아니다. 몸무게는 등록 시점에 따라 달라질 수 있다.",
+    "gameplay": "신체 정보 추가만으로 기존 stats 및 specialAbility를 변경하거나 전투 계산에 자동 적용하지 않는다."
   }
 }
